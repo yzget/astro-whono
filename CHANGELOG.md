@@ -11,8 +11,12 @@ The format is based on Keep a Changelog, and this project aims to follow Semanti
 - Content Console 的文章列表更多菜单新增单篇 Markdown/MDX 源文件导出，开发环境下可直接下载当前条目的源文件。
 - Content Console 新增 essay / bits 条目删除功能；删除时源文件会移入 `.trash/content/`，便于误删恢复。
 
+### Changed
+- Content Console 列表数据源改为 DEV 源文件索引，并将 bits 公开分页与锚点规则抽离到共享 helper，避免后台列表依赖 Astro dev content store 的瞬时同步状态。
+
 ### Fixed
 - 修复后台图片预览在遇到无效地址时仍可能尝试加载图片的问题，地址不合法时会隐藏预览并清空图片源。
+- 修复 Content Console 在本地新增、保存或删除内容后，刷新时可能因 Astro content store 同步窗口出现整页空列表的问题。
 
 ## [0.4.1] - 2026-05-03
 

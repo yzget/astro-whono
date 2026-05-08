@@ -21,6 +21,7 @@ import {
   resolveAdminContentEntryIdFromSourcePath,
   type AdminContentCollectionKey
 } from './content-shared';
+import { getAdminContentEntryListHref } from './content-routes';
 import { normalizeAdminBitsImageSource } from './image-shared';
 
 export type AdminChecksCategoryId = 'settings' | 'essay-slug' | 'bits-images' | 'tag';
@@ -115,16 +116,9 @@ const getProjectRoot = (): string =>
 const toRelativeProjectPath = (filePath: string): string =>
   path.relative(getProjectRoot(), filePath).replace(/\\/g, '/');
 
-const resolveContentHref = (
-  collection: AdminContentCollectionKey,
-  entryId: string
-): string => {
-  const params = new URLSearchParams({
-    q: entryId,
-    entry: entryId
-  });
-  return `/admin/content/${collection}/?${params.toString()}`;
-};
+// Checks 只生成轻量定位 URL，不依赖 Content Console 的重数据层。
+const resolveContentHref = (collection: AdminContentCollectionKey, entryId: string): string =>
+  getAdminContentEntryListHref(collection, { entryId });
 
 const createIssueId = (
   category: AdminChecksCategoryId,

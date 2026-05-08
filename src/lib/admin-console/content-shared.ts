@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { readFile, readdir } from 'node:fs/promises';
+import { open, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { StringDecoder } from 'node:string_decoder';
 import { normalizeBitsAvatarPath } from '../../utils/format';
 import {
   parseEssayDateInput,
@@ -21,18 +22,20 @@ import {
   type FrontmatterPatch,
   splitMarkdownFrontmatter
 } from './frontmatter';
+import type {
+  AdminContentCollectionKey
+} from './content-collections';
 
-export type AdminContentCollectionKey = 'essay' | 'bits' | 'memo';
-export type AdminContentWriteCollectionKey = 'essay' | 'bits';
-
-export const ADMIN_CONTENT_COLLECTION_KEYS = ['essay', 'bits', 'memo'] as const satisfies readonly AdminContentCollectionKey[];
-export const ADMIN_CONTENT_WRITE_COLLECTION_KEYS = ['essay', 'bits'] as const satisfies readonly AdminContentWriteCollectionKey[];
-
-export const isAdminContentCollectionKey = (value: string): value is AdminContentCollectionKey =>
-  (ADMIN_CONTENT_COLLECTION_KEYS as readonly string[]).includes(value);
-
-export const isAdminContentWriteCollectionKey = (value: string): value is AdminContentWriteCollectionKey =>
-  (ADMIN_CONTENT_WRITE_COLLECTION_KEYS as readonly string[]).includes(value);
+export {
+  ADMIN_CONTENT_COLLECTION_KEYS,
+  ADMIN_CONTENT_WRITE_COLLECTION_KEYS,
+  isAdminContentCollectionKey,
+  isAdminContentWriteCollectionKey
+} from './content-collections';
+export type {
+  AdminContentCollectionKey,
+  AdminContentWriteCollectionKey
+} from './content-collections';
 
 export type AdminContentEntryResolutionErrorCode = 'invalid-entry-id' | 'source-not-found';
 
@@ -50,6 +53,11 @@ export type AdminContentValidationIssue = {
   path: string;
   message: string;
 };
+
+type FrontmatterTextReadResult =
+  | { status: 'done'; frontmatterText: string | null }
+  | { status: 'none' }
+  | { status: 'pending' };
 
 export type AdminEssayEditorValues = {
   title: string;
@@ -209,6 +217,91 @@ export const toAdminContentRelativeProjectPath = (filePath: string): string =>
 
 const hashSourceText = (sourceText: string): string =>
   createHash('sha1').update(sourceText).digest('hex');
+
+const FRONTMATTER_READ_CHUNK_SIZE = 4096;
+const FRONTMATTER_OPENING_MARKERS = ['---\n', '---\r\n'] as const;
+
+const trimFrontmatterLineEnding = (value: string): string =>
+  value.endsWith('\r') ? value.slice(0, -1) : value;
+
+const parseFrontmatterTextFromPrefix = (
+  sourcePrefix: string,
+  reachedEof: boolean
+): FrontmatterTextReadResult => {
+  const openingMarker = FRONTMATTER_OPENING_MARKERS.find((marker) => sourcePrefix.startsWith(marker));
+
+  if (!openingMarker) {
+    const mayStillBeOpeningMarker = FRONTMATTER_OPENING_MARKERS.some((marker) => marker.startsWith(sourcePrefix));
+    if (!reachedEof && mayStillBeOpeningMarker) return { status: 'pending' };
+    if (reachedEof && sourcePrefix === '---') {
+      throw new Error('Markdown frontmatter 缺少关闭标记');
+    }
+    return { status: 'none' };
+  }
+
+  let index = openingMarker.length;
+
+  while (index <= sourcePrefix.length) {
+    const lineEnd = sourcePrefix.indexOf('\n', index);
+    const sliceEnd = lineEnd === -1 ? sourcePrefix.length : lineEnd;
+    const line = trimFrontmatterLineEnding(sourcePrefix.slice(index, sliceEnd));
+
+    if (lineEnd !== -1 && (line === '---' || line === '...')) {
+      return {
+        status: 'done',
+        frontmatterText: sourcePrefix.slice(openingMarker.length, index)
+      };
+    }
+
+    if (lineEnd === -1) {
+      if (reachedEof && (line === '---' || line === '...')) {
+        return {
+          status: 'done',
+          frontmatterText: sourcePrefix.slice(openingMarker.length, index)
+        };
+      }
+      if (reachedEof) {
+        throw new Error('Markdown frontmatter 缺少关闭标记');
+      }
+      return { status: 'pending' };
+    }
+
+    index = lineEnd + 1;
+  }
+
+  if (reachedEof) {
+    throw new Error('Markdown frontmatter 缺少关闭标记');
+  }
+  return { status: 'pending' };
+};
+
+const readMarkdownFrontmatterText = async (filePath: string): Promise<string | null> => {
+  const file = await open(filePath, 'r');
+  const decoder = new StringDecoder('utf8');
+  const buffer = Buffer.alloc(FRONTMATTER_READ_CHUNK_SIZE);
+  let sourcePrefix = '';
+
+  try {
+    while (true) {
+      const { bytesRead } = await file.read(buffer, 0, buffer.length, null);
+      const reachedEof = bytesRead === 0;
+      sourcePrefix += reachedEof ? decoder.end() : decoder.write(buffer.subarray(0, bytesRead));
+
+      const result = parseFrontmatterTextFromPrefix(sourcePrefix, reachedEof);
+      if (result.status === 'done') return result.frontmatterText;
+      if (result.status === 'none') return null;
+      if (reachedEof) return null;
+    }
+  } finally {
+    await file.close();
+  }
+};
+
+const parseFrontmatterRecord = (frontmatterText: string | null): Record<string, unknown> => {
+  const document = parseMarkdownFrontmatterDocument(frontmatterText);
+  const rawFrontmatter = document.toJS();
+  return isRecord(rawFrontmatter) ? rawFrontmatter : {};
+};
 
 const normalizeEntryId = (entryId: string): string => {
   const normalized = entryId.trim().replace(/\\/g, '/');
@@ -411,11 +504,8 @@ export const listAdminCollectionSourceFiles = async (
 export const readAdminSourceFrontmatterRecord = async (
   filePath: string
 ): Promise<Record<string, unknown>> => {
-  const sourceText = await readFile(filePath, 'utf8');
-  const section = splitMarkdownFrontmatter(sourceText);
-  const document = parseMarkdownFrontmatterDocument(section.frontmatterText);
-  const rawFrontmatter = document.toJS();
-  return isRecord(rawFrontmatter) ? rawFrontmatter : {};
+  const frontmatterText = await readMarkdownFrontmatterText(filePath);
+  return parseFrontmatterRecord(frontmatterText);
 };
 
 const resolveDefaultPublicEntryId = (sourceEntryId: string): string => {

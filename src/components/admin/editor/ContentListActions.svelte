@@ -21,6 +21,10 @@ import {
   type AdminContentIssue,
   type AdminContentWriteResult
 } from '../../../scripts/admin-content/entry-transport';
+import {
+  closeClosestAdminDetailsMenu,
+  initAdminDetailsMenus
+} from '../../../scripts/admin-content/details-menu';
 import { createWithBase } from '../../../utils/format';
 import { flattenEntryIdToSlug } from '../../../utils/slug-rules';
 import ArticleInfoDialog from './ArticleInfoDialog.svelte';
@@ -49,7 +53,7 @@ let frontmatter = $state<AdminEssayEditorValues | null>(null);
 let issues = $state<AdminContentIssue[]>([]);
 let errors = $state<string[]>([]);
 let statusState = $state<StatusState>('idle');
-let statusText = $state('等待选择条目');
+let statusText = $state('');
 
 const cloneFrontmatter = (value: AdminEssayEditorValues): AdminEssayEditorValues => ({
   title: value.title,
@@ -102,7 +106,7 @@ const closeDialog = () => {
     loadRequestId += 1;
     loadingEntry = false;
     busy = false;
-    setStatus('idle', '等待选择条目');
+    setStatus('idle', '');
   }
   open = false;
   selectedTrigger = null;
@@ -126,23 +130,40 @@ const resetToBaseline = () => {
   frontmatter = cloneFrontmatter(baselineFrontmatter);
   issues = [];
   errors = [];
-  setStatus('ready', '已还原到当前加载版本');
-};
-
-const closeActionMenus = (except?: HTMLDetailsElement | null) => {
-  document.querySelectorAll<HTMLDetailsElement>('.admin-content-item__more[open]').forEach((details) => {
-    if (details !== except) details.open = false;
-  });
+  setStatus('ready', '已还原');
 };
 
 const closeActionMenu = (trigger: HTMLElement) => {
-  const details = trigger.closest<HTMLDetailsElement>('.admin-content-item__more');
-  if (details) details.open = false;
+  closeClosestAdminDetailsMenu(trigger, '.admin-content-item__more');
 };
 
 const getRowTitle = (trigger: HTMLElement, entryId: string): string => {
   const row = trigger.closest<HTMLElement>('[data-admin-content-item]');
   return row?.querySelector<HTMLElement>('[data-admin-content-row-title]')?.textContent?.trim() || entryId;
+};
+
+const getRowCollectionLabel = (trigger: HTMLElement): string =>
+  trigger
+    .closest<HTMLElement>('.admin-content-module')
+    ?.querySelector<HTMLElement>('.admin-content-module__head h3 span')
+    ?.textContent
+    ?.trim()
+  || '该分类';
+
+const removeDeletedRowFromList = (trigger: HTMLElement): void => {
+  const row = trigger.closest<HTMLElement>('[data-admin-content-item]');
+  const list = row?.parentElement;
+  if (!row || !list) return;
+
+  const collectionLabel = getRowCollectionLabel(trigger);
+  row.remove();
+
+  if (list.children.length > 0) return;
+
+  const empty = document.createElement('p');
+  empty.className = 'admin-content-empty';
+  empty.textContent = `${collectionLabel}中没有符合当前筛选条件的内容。`;
+  list.replaceWith(empty);
 };
 
 const getDeletePayload = (
@@ -228,14 +249,13 @@ const openEditor = async (entryId: string, trigger: HTMLElement) => {
     if (requestId !== loadRequestId) return;
 
     if (!response.ok || !isRecord(payload) || payload.ok !== true || !essayPayload) {
-      errors = getPayloadErrors(payload).length > 0
-        ? getPayloadErrors(payload)
-        : ['文章信息加载失败，请进入编辑页处理'];
+      const payloadErrors = getPayloadErrors(payload);
+      errors = payloadErrors;
       issues = getPayloadIssues(payload);
       loadingEntry = false;
       open = false;
       frontmatter = null;
-      setStatus('error', '文章信息加载失败');
+      setStatus('error', payloadErrors.length > 0 ? '文章信息加载失败' : '加载失败，可进入编辑页处理');
       return;
     }
 
@@ -249,11 +269,11 @@ const openEditor = async (entryId: string, trigger: HTMLElement) => {
     setStatus('ready', '文章信息已加载');
   } catch {
     if (requestId !== loadRequestId) return;
-    errors = ['文章信息请求失败，请稍后重试'];
+    errors = [];
     loadingEntry = false;
     open = false;
     frontmatter = null;
-    setStatus('error', '文章信息请求失败');
+    setStatus('error', '加载失败，请稍后重试');
   } finally {
     if (requestId === loadRequestId) {
       loadingEntry = false;
@@ -292,18 +312,19 @@ const saveEditor = async () => {
 
     if (!response.ok || !isRecord(payload) || payload.ok !== true) {
       issues = getPayloadIssues(payload);
-      errors = getPayloadErrors(payload).length > 0
-        ? getPayloadErrors(payload)
-        : ['文章信息保存失败，请检查当前表单与磁盘状态'];
-      setStatus(response.status === 409 ? 'warn' : 'error', response.status === 409 ? '检测到外部更新' : '文章信息保存失败');
+      const payloadErrors = getPayloadErrors(payload);
+      errors = payloadErrors;
+      const state = response.status === 409 ? 'warn' : 'error';
+      const fallbackText = response.status === 409 ? '检测到外部更新' : '保存失败，请检查当前表单与磁盘状态';
+      setStatus(state, payloadErrors.length > 0 ? (response.status === 409 ? '检测到外部更新' : '文章信息保存失败') : fallbackText);
       return;
     }
 
     const result = getPayloadResult(payload);
     const latestPayload = getPayloadEssayPayload(payload);
     if (!result || !latestPayload) {
-      errors = ['保存响应缺少必要结果，请检查开发日志'];
-      setStatus('error', '保存响应缺少结果');
+      errors = [];
+      setStatus('error', '保存响应异常，请检查开发日志');
       return;
     }
 
@@ -316,8 +337,8 @@ const saveEditor = async () => {
       restoreFocusAndCloseDialog();
     }
   } catch {
-    errors = ['文章信息保存请求失败，请稍后重试'];
-    setStatus('error', '保存请求失败');
+    errors = [];
+    setStatus('error', '保存请求失败，请稍后重试');
   } finally {
     busy = false;
   }
@@ -325,7 +346,8 @@ const saveEditor = async () => {
 
 const deleteEntry = async (trigger: HTMLElement) => {
   if (busy) {
-    setStatus('warn', '当前有操作进行中');
+    errors = [];
+    setStatus('warn', '操作进行中');
     return;
   }
 
@@ -334,15 +356,15 @@ const deleteEntry = async (trigger: HTMLElement) => {
   const expectedRelativePath = trigger.dataset.relativePath?.trim() ?? '';
 
   if (!isAdminContentDeletableCollectionKey(rawCollection) || !entryId || !expectedRelativePath) {
-    errors = ['删除动作缺少必要的条目信息，请刷新列表后重试'];
-    setStatus('error', '删除初始化失败');
+    errors = [];
+    setStatus('error', '删除信息不完整，请刷新后重试');
     return;
   }
 
   busy = true;
   errors = [];
   issues = [];
-  setStatus('loading', '正在读取删除确认信息');
+  setStatus('loading', '正在准备删除确认');
 
   try {
     // 列表中的 revision 可能已经过期，确认前先读取一次最新文件状态。
@@ -357,29 +379,27 @@ const deleteEntry = async (trigger: HTMLElement) => {
     const entryPayload = getDeletePayload(loadPayload, rawCollection, entryId);
 
     if (!loadResponse.ok || !isRecord(loadPayload) || loadPayload.ok !== true || !entryPayload) {
-      errors = getPayloadErrors(loadPayload).length > 0
-        ? getPayloadErrors(loadPayload)
-        : ['删除确认信息加载失败，请刷新列表后重试'];
+      const payloadErrors = getPayloadErrors(loadPayload);
+      errors = payloadErrors;
       issues = getPayloadIssues(loadPayload);
-      setStatus('error', '删除确认失败');
+      setStatus('error', payloadErrors.length > 0 ? '删除确认失败' : '删除确认失败，请刷新后重试');
       return;
     }
 
     if (entryPayload.relativePath !== expectedRelativePath) {
-      errors = ['当前列表中的文件路径已过期，请刷新后再删除'];
-      setStatus('warn', '列表状态已过期');
+      errors = [];
+      setStatus('warn', '列表已过期，请刷新后再删除');
       return;
     }
 
     const title = getRowTitle(trigger, entryId);
     const confirmed = window.confirm([
-      `确认删除「${title}」？`,
+      `确认删除《${title}》？`,
       '',
-      `Collection: ${rawCollection}`,
-      `Entry: ${entryId}`,
-      `文件: ${entryPayload.relativePath}`,
+      `类型：${getRowCollectionLabel(trigger)}`,
+      `源文件：${entryPayload.relativePath}`,
       '',
-      '文件会移动到 .trash/content/ 下，可从回收站手动恢复。'
+      '文件会移到 .trash/content/，之后可从回收站手动恢复。'
     ].join('\n'));
 
     if (!confirmed) {
@@ -405,28 +425,27 @@ const deleteEntry = async (trigger: HTMLElement) => {
     const deletePayload = await parseResponseBody(deleteResponse);
 
     if (!deleteResponse.ok || !isRecord(deletePayload) || deletePayload.ok !== true) {
-      errors = getPayloadErrors(deletePayload).length > 0
-        ? getPayloadErrors(deletePayload)
-        : ['删除失败，请检查响应与控制台日志'];
+      const payloadErrors = getPayloadErrors(deletePayload);
+      errors = payloadErrors;
       issues = getPayloadIssues(deletePayload);
-      setStatus(deleteResponse.status === 409 ? 'warn' : 'error', deleteResponse.status === 409 ? '检测到外部更新' : '删除失败');
+      const state = deleteResponse.status === 409 ? 'warn' : 'error';
+      const fallbackText = deleteResponse.status === 409 ? '检测到外部更新' : '删除失败，请检查控制台日志';
+      setStatus(state, payloadErrors.length > 0 ? (deleteResponse.status === 409 ? '检测到外部更新' : '删除失败') : fallbackText);
       return;
     }
 
     const result = getPayloadDeleteResult(deletePayload);
     if (!result || !result.deleted || !result.trashedPath) {
-      errors = ['删除响应缺少回收站路径，请检查开发日志'];
-      setStatus('error', '删除响应缺少结果');
+      errors = [];
+      setStatus('error', '删除响应异常，请检查开发日志');
       return;
     }
 
-    setStatus('ok', `已移动到回收站：${result.trashedPath}`);
-    window.setTimeout(() => {
-      window.location.reload();
-    }, 480);
+    removeDeletedRowFromList(trigger);
+    setStatus('ok', '已移到回收站，刷新页面可同步分页与计数');
   } catch {
-    errors = ['删除请求失败，请稍后重试'];
-    setStatus('error', '删除请求失败');
+    errors = [];
+    setStatus('error', '删除请求失败，请稍后重试');
   } finally {
     busy = false;
   }
@@ -434,13 +453,6 @@ const deleteEntry = async (trigger: HTMLElement) => {
 
 const handleClick = (event: MouseEvent) => {
   if (!(event.target instanceof Element)) return;
-  const currentMenu = event.target.closest<HTMLDetailsElement>('.admin-content-item__more');
-  const summary = event.target.closest<HTMLElement>('.admin-content-item__more > summary');
-  if (summary) {
-    closeActionMenus(currentMenu);
-    return;
-  }
-  if (!currentMenu) closeActionMenus();
 
   const deleteTrigger = event.target.closest<HTMLElement>('[data-admin-content-delete-action]');
   if (deleteTrigger) {
@@ -461,16 +473,6 @@ const handleClick = (event: MouseEvent) => {
   void openEditor(entryId, trigger);
 };
 
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key !== 'Escape' || open) return;
-  const openMenu = document.querySelector<HTMLDetailsElement>('.admin-content-item__more[open]');
-  if (!openMenu) return;
-
-  event.preventDefault();
-  openMenu.open = false;
-  openMenu.querySelector<HTMLElement>('summary')?.focus({ preventScroll: true });
-};
-
 $effect(() => {
   document.querySelectorAll<HTMLButtonElement>('[data-admin-content-delete-action]').forEach((button) => {
     button.disabled = busy;
@@ -478,11 +480,13 @@ $effect(() => {
 });
 
 $effect(() => {
+  const cleanupDetailsMenus = initAdminDetailsMenus({
+    selector: '.admin-content-item__more'
+  });
   document.addEventListener('click', handleClick);
-  document.addEventListener('keydown', handleKeydown);
   return () => {
+    cleanupDetailsMenus();
     document.removeEventListener('click', handleClick);
-    document.removeEventListener('keydown', handleKeydown);
   };
 });
 </script>
@@ -504,14 +508,16 @@ $effect(() => {
   />
 {/if}
 
-<div class="admin-content-list-action-status" data-state={statusState} role="status" aria-live="polite" aria-atomic="true">
-  {statusText}
-</div>
+<div class="admin-content-action-feedback">
+  <p class="admin-status admin-content-action-status" data-state={statusState} role="status" aria-live="polite" aria-atomic="true">
+    {statusText}
+  </p>
 
-{#if errors.length > 0}
-  <div class="admin-content-list-action-errors" role="alert">
-    {#each errors as error}
-      <p>{error}</p>
-    {/each}
-  </div>
-{/if}
+  {#if errors.length > 0}
+    <div class="admin-content-action-errors" role="alert">
+      {#each errors as error}
+        <p>{error}</p>
+      {/each}
+    </div>
+  {/if}
+</div>

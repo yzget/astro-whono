@@ -2,6 +2,21 @@ import type { CollectionEntry } from 'astro:content';
 import { getPublished, getPageSlice, getTotalPages, type GetPublishedOptions } from './content';
 import { createWithBase, formatDateTime } from '../utils/format';
 import { deriveMarkdownText, truncateText } from '../utils/excerpt';
+import {
+  buildPublishedBitsHrefMap,
+  compareBitsForRouting,
+  getBitAnchorId,
+  getBitsPagePath,
+  type BitPublicOrderItem
+} from './bits-public-routing';
+
+export {
+  buildPublishedBitsHrefMap,
+  getBitAnchorId,
+  getBitsPagePath,
+  orderPublishedBitsForRouting,
+  type BitPublicOrderItem
+} from './bits-public-routing';
 
 export type BitsEntry = CollectionEntry<'bits'>;
 export type BitsYearOption = {
@@ -42,7 +57,6 @@ type BitsQueryOptions = Pick<GetPublishedOptions<'bits'>, 'includeDraft'>;
 const MAX_INDEX_TEXT = 600;
 const FULL_RENDER_LIMIT = 180;
 export const MAX_PRIMARY_BITS_FILTER_YEARS = 2;
-const orderByBitsDate = (a: BitsEntry, b: BitsEntry) => b.data.date.valueOf() - a.data.date.valueOf();
 const shouldMemoizeBitQueries = import.meta.env.PROD;
 const base = import.meta.env.BASE_URL ?? '/';
 const withBase = createWithBase(base);
@@ -56,6 +70,15 @@ const cloneBitEntries = (entries: readonly BitsEntry[]) => entries.slice();
 const shouldUseDefaultBitsCache = (includeDraft?: boolean) =>
   shouldMemoizeBitQueries && includeDraft !== true;
 
+const toBitPublicOrderItem = (entry: BitsEntry): BitPublicOrderItem => ({
+  id: entry.id,
+  date: entry.data.date,
+  draft: entry.data.draft === true
+});
+
+const orderByBitsDate = (left: BitsEntry, right: BitsEntry) =>
+  compareBitsForRouting(toBitPublicOrderItem(left), toBitPublicOrderItem(right));
+
 const loadSortedBits = ({ includeDraft }: BitsQueryOptions = {}) =>
   getPublished('bits', {
     ...(includeDraft === undefined ? {} : { includeDraft }),
@@ -63,10 +86,6 @@ const loadSortedBits = ({ includeDraft }: BitsQueryOptions = {}) =>
   });
 
 export const getBitSlug = (entry: BitsEntry) => entry.data.slug ?? entry.id;
-
-export const getBitAnchorId = (key: string) => `bit-${key}`;
-
-export const getBitsPagePath = (page: number) => (page <= 1 ? '/bits/' : `/bits/page/${page}/`);
 
 const buildBitsYearOptions = (bits: readonly BitsEntry[]): BitsYearOption[] => {
   const yearCountMap = new Map<number, number>();
@@ -136,10 +155,12 @@ export function getBitsDerivedText(bit: BitsEntry): BitsDerivedText {
 
 const buildBitsIndex = async (pageSize: number) => {
   const bits = await getSortedBits();
+  const publishedHrefById = buildPublishedBitsHrefMap(bits.map(toBitPublicOrderItem), pageSize);
   return bits.map((bit, index) => {
     const derivedText = getBitsDerivedText(bit);
     const page = Math.floor(index / pageSize) + 1;
     const firstImage = bit.data.images?.[0];
+    const hrefPath = publishedHrefById.get(bit.id) ?? `${getBitsPagePath(page)}#${getBitAnchorId(bit.id)}`;
 
     return {
       key: bit.id,
@@ -153,7 +174,7 @@ const buildBitsIndex = async (pageSize: number) => {
       dateLabel: bit.data.date ? formatDateTime(bit.data.date) : null,
       year: bit.data.date ? bit.data.date.getFullYear() : null,
       page,
-      href: `${withBase(getBitsPagePath(page))}#${getBitAnchorId(bit.id)}`,
+      href: withBase(hrefPath),
       thumbnail: firstImage
         ? {
             src: withBase(firstImage.src),

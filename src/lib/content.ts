@@ -44,8 +44,9 @@ export const getPageSlice = <T>(items: T[], currentPage: number, pageSize: numbe
 const isContentSourceFilePresent = <K extends CollectionKey>(entry: CollectionEntry<K>): boolean => {
   if (!import.meta.env.DEV) return true;
 
-  // Dev content store 在服务端移动文件后可能短暂保留旧 entry；
-  // 本地查询以磁盘源文件为准，避免删除后刷新仍显示残留条目。
+  // DEV-only 同步 existsSync 防御，仅服务公开页 / 公开内容 getter 在 dev preview 下避免显示已删除条目。
+  // Admin Content 列表已迁移到源文件索引层，不依赖也不扩散此过滤。
+  // 同步 IO 成本若随公开内容规模增长变得可见，应作为公开侧优化单独处理。
   const filePath = (entry as CollectionEntryWithSourcePath).filePath;
   return typeof filePath !== 'string' || filePath.length === 0 || existsSync(filePath);
 };
