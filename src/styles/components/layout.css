@@ -10,7 +10,7 @@
   min-height: 100vh;
   display: grid;
   grid-template-columns: var(--sidebar) 1px 1fr;
-  max-width: 1100px;
+  max-width: var(--layout-shell-max-inline-size);
   margin: 0 auto;
 }
 
@@ -439,7 +439,7 @@ body.admin-page {
 
 body.admin-page .shell {
   grid-template-columns: var(--sidebar) 1px minmax(0, 1fr);
-  max-width: min(1100px, 100vw);
+  max-width: min(var(--layout-shell-max-inline-size), 100vw);
 }
 
 body.admin-page .shell[data-sidebar-divider='none'] {

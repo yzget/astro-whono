@@ -1,0 +1,128 @@
+/* Admin Content Editor Frontmatter
+   承载 frontmatter 字段与文章信息弹窗样式；不承载页头文章信息入口或写入流程样式。
+*/
+
+.admin-editor-frontmatter,
+.admin-editor-shell__workspace,
+.admin-editor-shell__pane,
+.admin-editor-body,
+.admin-editor-preview {
+  min-height: 0;
+  min-width: 0;
+}
+
+.admin-editor-frontmatter,
+.admin-editor-body,
+.admin-editor-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-editor-frontmatter {
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.admin-editor-frontmatter__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.admin-editor-frontmatter .admin-field {
+  gap: 4px;
+}
+
+.admin-editor-frontmatter .admin-field__label {
+  color: color-mix(in srgb, var(--muted) 72%, var(--faint) 28%);
+  font-size: var(--admin-text-xs);
+  line-height: 1.2;
+}
+
+.admin-editor-frontmatter .admin-field.is-invalid .admin-field__label {
+  color: var(--admin-field-invalid-label);
+}
+
+.admin-editor-frontmatter .admin-field__control {
+  min-height: 31px;
+  padding-block: 4px;
+  font-size: var(--admin-text-sm);
+}
+
+.admin-editor-frontmatter textarea.admin-field__control {
+  min-height: 62px;
+  padding-block: 6px;
+  line-height: 1.45;
+}
+
+.admin-editor-frontmatter-popover {
+  --admin-modal-width: 460px;
+  --admin-modal-max-height: min(74vh, 680px);
+  --admin-modal-z-index: 36;
+  --admin-modal-padding: 32px var(--pad-x);
+}
+
+.admin-editor-frontmatter-popover__title-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  flex: 1 1 auto;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-editor-frontmatter-popover__source-path {
+  min-width: 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--faint) 82%, transparent);
+  font-family: var(--admin-font-mono);
+  font-size: var(--admin-text-2xs);
+  font-weight: 400;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-editor-frontmatter-popover__close {
+  flex: 0 0 auto;
+}
+
+.admin-editor-frontmatter-popover__loading {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  color: var(--muted);
+  font-size: var(--admin-text-sm);
+  line-height: 1.45;
+}
+
+.admin-editor-frontmatter-popover__actions {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.admin-editor-frontmatter-popover__toggles,
+.admin-editor-frontmatter-popover__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-editor-frontmatter-popover__toggles {
+  gap: 10px;
+}
+
+.admin-editor-frontmatter-popover__toggles .admin-toggle-row {
+  gap: 7px;
+  min-height: 24px;
+  font-size: var(--admin-text-sm);
+}
+
+.admin-editor-frontmatter-popover__toggles .admin-toggle-row input {
+  margin: 0;
+}

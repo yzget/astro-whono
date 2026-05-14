@@ -1,0 +1,95 @@
+/* Admin Content Editor Bits Image Row
+   承载 bits 图片行编辑器；不承载 essay Svelte editor 或通用 legacy 表单规则。
+*/
+
+.admin-content-image-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-content-image-editor__add {
+  flex-shrink: 0;
+}
+
+.admin-content-image-editor__hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: var(--admin-text-sm);
+  line-height: 1.6;
+}
+
+.admin-content-image-editor {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-content-image-row {
+  display: grid;
+  gap: 12px;
+  min-inline-size: var(--admin-content-editor-min-inline-size);
+  padding: 12px;
+}
+
+.admin-content-image-row__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-content-image-row__title {
+  font-size: var(--admin-text-sm);
+}
+
+.admin-content-image-row__grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 2.2fr) repeat(2, minmax(96px, 0.55fr)) minmax(220px, 1fr);
+  gap: 12px;
+}
+
+.admin-content-image-row__field {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-content-image-row__field--src,
+.admin-content-image-row__field--alt {
+  min-width: 0;
+}
+
+.admin-content-image-row__src-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.admin-content-image-row__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-content-image-row__meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--admin-text-sm);
+}
+
+.admin-content-image-row__preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--admin-surface);
+}
+
+.admin-content-image-row__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

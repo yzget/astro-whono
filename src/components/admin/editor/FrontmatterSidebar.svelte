@@ -27,7 +27,7 @@ const getIssue = (path: string): string =>
 <aside class="admin-editor-frontmatter" aria-label="随笔字段">
   <div class="admin-editor-frontmatter__fields">
     <label class="admin-field admin-content-editor__field" class:is-invalid={Boolean(getIssue('title'))}>
-      <span class="admin-field__label">标题</span>
+      <span class="admin-field__label">文章标题</span>
       <input class="admin-field__control" name="title" type="text" bind:value={value.title} {disabled} />
       <p class="admin-content-editor__error" hidden={!getIssue('title')}>{getIssue('title')}</p>
     </label>

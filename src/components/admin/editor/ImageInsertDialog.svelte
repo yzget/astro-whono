@@ -1,5 +1,11 @@
 <script lang="ts">
 import { createModalDialogFocusController } from '../../../scripts/admin-console/modal-dialog-focus';
+import {
+  getPayloadErrors,
+  isPayloadOk,
+  isRecord,
+  parseResponseBody
+} from '../../../scripts/admin-content/entry-transport';
 import AdminEditorIcon from './AdminEditorIcon.svelte';
 
 type UploadResult = {
@@ -84,25 +90,6 @@ const handleFileChange = () => {
   errorText = '';
 };
 
-const parseResponseBody = async (response: Response): Promise<unknown> => {
-  const text = await response.text();
-  if (!text.trim()) return null;
-
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return text;
-  }
-};
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const getPayloadErrors = (value: unknown): string[] =>
-  isRecord(value) && Array.isArray(value.errors)
-    ? value.errors.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
-    : [];
-
 const getUploadResult = (value: unknown): UploadResult | null => {
   if (!isRecord(value) || !isRecord(value.result)) return null;
   const result = value.result;
@@ -146,7 +133,7 @@ const uploadAndInsert = async () => {
 
     const payload = await parseResponseBody(response);
     const result = getUploadResult(payload);
-    if (!response.ok || !isRecord(payload) || payload.ok !== true || !result) {
+    if (!response.ok || !isPayloadOk(payload) || !result) {
       errorText = getPayloadErrors(payload)[0] ?? '图片上传失败';
       return;
     }

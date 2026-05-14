@@ -4,6 +4,7 @@ import {
   getPayloadIssues,
   getPayloadResult,
   getPayloadRevision,
+  isPayloadOk,
   isRecord,
   parseResponseBody,
   type AdminContentIssue,
@@ -292,7 +293,7 @@ if (!adminContentRoot) {
             currentRevision = nextRevision;
           }
 
-          if (!response.ok || !isRecord(payload) || payload.ok !== true) {
+          if (!response.ok || !isPayloadOk(payload)) {
             const issues = getPayloadIssues(payload);
             setStatus(response.status === 409 ? 'warn' : 'error', dryRun ? 'dry-run 未通过' : '写入失败');
             setErrors(

@@ -18,6 +18,7 @@ type Props = {
   dirty?: boolean;
   canSave?: boolean;
   slugPlaceholder?: string;
+  relativePath?: string;
   onClose: () => void;
   onReset: () => void;
   onSave: () => void;
@@ -32,6 +33,7 @@ let {
   dirty = false,
   canSave = false,
   slugPlaceholder = '',
+  relativePath = '',
   onClose,
   onReset,
   onSave
@@ -95,8 +97,11 @@ $effect(() => {
       tabindex="-1"
     >
       <header class="admin-modal__head admin-editor-frontmatter-popover__head">
-        <div>
+        <div class="admin-editor-frontmatter-popover__title-row">
           <h3 id="admin-editor-frontmatter-panel-title" class="admin-modal__title admin-content-section-title">文章信息</h3>
+          {#if relativePath}
+            <code class="admin-editor-frontmatter-popover__source-path" title={relativePath}>{relativePath}</code>
+          {/if}
         </div>
         <button
           bind:this={closeButtonEl}

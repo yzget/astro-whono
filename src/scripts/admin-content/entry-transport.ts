@@ -51,6 +51,9 @@ export const parseResponseBody = async (response: Response): Promise<unknown> =>
   }
 };
 
+export const isPayloadOk = (value: unknown): value is Record<string, unknown> & { ok: true } =>
+  isRecord(value) && value.ok === true;
+
 export const getPayloadErrors = (value: unknown): string[] =>
   isRecord(value) ? getStringArray(value.errors) : [];
 

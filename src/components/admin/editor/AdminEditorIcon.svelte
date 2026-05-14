@@ -7,6 +7,8 @@ import CodeXml from '@lucide/svelte/icons/code-xml';
 import Columns2 from '@lucide/svelte/icons/columns-2';
 import Download from '@lucide/svelte/icons/download';
 import Ellipsis from '@lucide/svelte/icons/ellipsis';
+import FilePenLine from '@lucide/svelte/icons/file-pen-line';
+import FileSearch from '@lucide/svelte/icons/file-search';
 import Heading from '@lucide/svelte/icons/heading';
 import Image from '@lucide/svelte/icons/image';
 import ImagePlus from '@lucide/svelte/icons/image-plus';
@@ -23,6 +25,7 @@ import Rows2 from '@lucide/svelte/icons/rows-2';
 import Table2 from '@lucide/svelte/icons/table-2';
 import Trash2 from '@lucide/svelte/icons/trash-2';
 import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+import Undo2 from '@lucide/svelte/icons/undo-2';
 import Upload from '@lucide/svelte/icons/upload';
 import X from '@lucide/svelte/icons/x';
 
@@ -36,6 +39,8 @@ const icons = {
   'columns-2': Columns2,
   download: Download,
   ellipsis: Ellipsis,
+  'file-pen-line': FilePenLine,
+  'file-search': FileSearch,
   heading: Heading,
   image: Image,
   'image-plus': ImagePlus,
@@ -52,6 +57,7 @@ const icons = {
   'task-list': ListCheck,
   trash: Trash2,
   'triangle-alert': TriangleAlert,
+  'undo-2': Undo2,
   upload: Upload
 } as const;
 

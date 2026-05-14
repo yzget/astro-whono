@@ -1,9 +1,13 @@
 <script lang="ts">
-import { tick } from 'svelte';
+import { onMount, tick } from 'svelte';
 import type {
   AdminContentEditorPayload,
   AdminEssayEditorValues
 } from '../../../lib/admin-console/content-shared';
+import {
+  cloneFrontmatter,
+  isEqualFrontmatter
+} from '../../../lib/admin-console/essay-editor-values';
 import {
   isAdminContentDeletableCollectionKey,
   type AdminContentDeletableCollectionKey
@@ -16,7 +20,7 @@ import {
   getPayloadIssues,
   getPayloadResult,
   getPayloadRevision,
-  isRecord,
+  isPayloadOk,
   parseResponseBody,
   type AdminContentIssue,
   type AdminContentWriteResult
@@ -28,6 +32,10 @@ import {
 import { createWithBase } from '../../../utils/format';
 import { flattenEntryIdToSlug } from '../../../utils/slug-rules';
 import ArticleInfoDialog from './ArticleInfoDialog.svelte';
+import {
+  CONTENT_LIST_DELETE_FEEDBACK_STORAGE_KEY,
+  CONTENT_LIST_DELETE_FEEDBACK_VALUE
+} from './content-list-feedback';
 
 type StatusState = 'idle' | 'loading' | 'ready' | 'ok' | 'warn' | 'error';
 
@@ -36,6 +44,8 @@ type Props = {
   endpoint: string;
   deleteEndpoint: string;
 };
+
+const STATUS_FEEDBACK_VISIBLE_MS = 2_000;
 
 let { base = '/', endpoint, deleteEndpoint }: Props = $props();
 
@@ -54,19 +64,7 @@ let issues = $state<AdminContentIssue[]>([]);
 let errors = $state<string[]>([]);
 let statusState = $state<StatusState>('idle');
 let statusText = $state('');
-
-const cloneFrontmatter = (value: AdminEssayEditorValues): AdminEssayEditorValues => ({
-  title: value.title,
-  description: value.description,
-  date: value.date,
-  publishedAt: value.publishedAt,
-  tagsText: value.tagsText,
-  draft: value.draft,
-  archive: value.archive,
-  slug: value.slug,
-  cover: value.cover,
-  badge: value.badge
-});
+let statusFeedbackClearTimer: number | null = null;
 
 const createEmptyFrontmatter = (): AdminEssayEditorValues => ({
   title: '',
@@ -81,9 +79,6 @@ const createEmptyFrontmatter = (): AdminEssayEditorValues => ({
   badge: ''
 });
 
-const isEqualFrontmatter = (left: AdminEssayEditorValues | null, right: AdminEssayEditorValues | null): boolean =>
-  JSON.stringify(left) === JSON.stringify(right);
-
 const dirty = $derived(!isEqualFrontmatter(frontmatter, baselineFrontmatter));
 const canSave = $derived(Boolean(frontmatter) && dirty && !busy);
 const slugPlaceholder = $derived(selectedDefaultPublicSlug || (selectedEntryId ? flattenEntryIdToSlug(selectedEntryId) : ''));
@@ -92,6 +87,32 @@ const withBase = $derived(createWithBase(base));
 const setStatus = (state: StatusState, text: string) => {
   statusState = state;
   statusText = text;
+};
+
+const clearStatusFeedbackTimer = () => {
+  if (statusFeedbackClearTimer === null) return;
+  window.clearTimeout(statusFeedbackClearTimer);
+  statusFeedbackClearTimer = null;
+};
+
+const queueStatusFeedbackClear = (state: StatusState, text: string) => {
+  clearStatusFeedbackTimer();
+  statusFeedbackClearTimer = window.setTimeout(() => {
+    statusFeedbackClearTimer = null;
+    if (statusState === state && statusText === text) {
+      setStatus('idle', '');
+    }
+  }, STATUS_FEEDBACK_VISIBLE_MS);
+};
+
+const takeStoredDeleteFeedback = (): boolean => {
+  try {
+    const value = window.sessionStorage.getItem(CONTENT_LIST_DELETE_FEEDBACK_STORAGE_KEY);
+    window.sessionStorage.removeItem(CONTENT_LIST_DELETE_FEEDBACK_STORAGE_KEY);
+    return value === CONTENT_LIST_DELETE_FEEDBACK_VALUE;
+  } catch {
+    return false;
+  }
 };
 
 const buildEntryEndpoint = (collection: AdminContentDeletableCollectionKey, entryId: string): string => {
@@ -248,7 +269,7 @@ const openEditor = async (entryId: string, trigger: HTMLElement) => {
     const essayPayload = getPayloadEssayPayload(payload);
     if (requestId !== loadRequestId) return;
 
-    if (!response.ok || !isRecord(payload) || payload.ok !== true || !essayPayload) {
+    if (!response.ok || !isPayloadOk(payload) || !essayPayload) {
       const payloadErrors = getPayloadErrors(payload);
       errors = payloadErrors;
       issues = getPayloadIssues(payload);
@@ -310,7 +331,7 @@ const saveEditor = async () => {
     const nextRevision = getPayloadRevision(payload);
     if (nextRevision && response.ok) revision = nextRevision;
 
-    if (!response.ok || !isRecord(payload) || payload.ok !== true) {
+    if (!response.ok || !isPayloadOk(payload)) {
       issues = getPayloadIssues(payload);
       const payloadErrors = getPayloadErrors(payload);
       errors = payloadErrors;
@@ -378,7 +399,7 @@ const deleteEntry = async (trigger: HTMLElement) => {
     const loadPayload = await parseResponseBody(loadResponse);
     const entryPayload = getDeletePayload(loadPayload, rawCollection, entryId);
 
-    if (!loadResponse.ok || !isRecord(loadPayload) || loadPayload.ok !== true || !entryPayload) {
+    if (!loadResponse.ok || !isPayloadOk(loadPayload) || !entryPayload) {
       const payloadErrors = getPayloadErrors(loadPayload);
       errors = payloadErrors;
       issues = getPayloadIssues(loadPayload);
@@ -424,7 +445,7 @@ const deleteEntry = async (trigger: HTMLElement) => {
     });
     const deletePayload = await parseResponseBody(deleteResponse);
 
-    if (!deleteResponse.ok || !isRecord(deletePayload) || deletePayload.ok !== true) {
+    if (!deleteResponse.ok || !isPayloadOk(deletePayload)) {
       const payloadErrors = getPayloadErrors(deletePayload);
       errors = payloadErrors;
       issues = getPayloadIssues(deletePayload);
@@ -472,6 +493,17 @@ const handleClick = (event: MouseEvent) => {
   closeActionMenu(trigger);
   void openEditor(entryId, trigger);
 };
+
+onMount(() => {
+  if (takeStoredDeleteFeedback()) {
+    const statusState: StatusState = 'ok';
+    const statusText = '已移到回收站';
+    setStatus(statusState, statusText);
+    queueStatusFeedbackClear(statusState, statusText);
+  }
+
+  return clearStatusFeedbackTimer;
+});
 
 $effect(() => {
   document.querySelectorAll<HTMLButtonElement>('[data-admin-content-delete-action]').forEach((button) => {

@@ -31,6 +31,7 @@ export function initAdminSidebarToggle() {
   if (!(button instanceof HTMLButtonElement)) return;
 
   const initialState = root.dataset.adminSidebar;
+  const isPageScoped = root.dataset.adminSidebarScope === 'page';
   let current: AdminSidebarState = isAdminSidebarState(initialState)
     ? initialState
     : (readStoredState() ?? EXPANDED);
@@ -51,7 +52,7 @@ export function initAdminSidebarToggle() {
   applyState(current, false);
 
   button.addEventListener('click', () => {
-    applyState(current === COLLAPSED ? EXPANDED : COLLAPSED, true);
+    applyState(current === COLLAPSED ? EXPANDED : COLLAPSED, !isPageScoped);
   });
 }
 

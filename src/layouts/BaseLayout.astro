@@ -49,6 +49,7 @@ const base = import.meta.env.BASE_URL ?? '/';
 const withBase = createWithBase(base);
 const bodyClassNames = typeof bodyClass === 'string' ? bodyClass.split(/\s+/).filter(Boolean) : [];
 const isAdminPage = bodyClassNames.includes('admin-page');
+const isContentEditorPage = bodyClassNames.includes('admin-page--content-editor');
 const isDev = import.meta.env.DEV;
 const isDevAdminPage = isAdminPage && isDev;
 const adminDevState = isAdminPage ? (isDev ? 'true' : 'false') : undefined;
@@ -67,7 +68,14 @@ const adminDevState = isAdminPage ? (isDev ? 'true' : 'false') : undefined;
         document.documentElement.dataset.theme = theme;
       })();
     </script>
-    {isDevAdminPage ? (
+    {isDevAdminPage && isContentEditorPage ? (
+      <script is:inline>
+        (() => {
+          document.documentElement.dataset.adminSidebar = 'collapsed';
+          document.documentElement.dataset.adminSidebarScope = 'page';
+        })();
+      </script>
+    ) : isDevAdminPage ? (
       <script is:inline>
         (() => {
           const key = 'astro-whono:admin-sidebar:state';

@@ -224,9 +224,13 @@ const bitsImageRows = selectedBitsImageRows.length > 0
                   </>
                 )
               }
-              <p class="admin-content-copy">
-                <code>{selectedEntryEditorPayload.relativePath}</code>
-              </p>
+              {
+                !shouldUseSvelteEssayEditor ? (
+                  <p class="admin-content-copy">
+                    <code>{selectedEntryEditorPayload.relativePath}</code>
+                  </p>
+                ) : null
+              }
             </div>
             <div
               class="admin-content-actions"
