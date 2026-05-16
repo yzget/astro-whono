@@ -1,52 +1,43 @@
 <script lang="ts">
 import { tick } from 'svelte';
-import type { AdminEssayEditorValues } from '../../../lib/admin-console/content-shared';
 import {
   cloneFrontmatter,
   isEqualFrontmatter
 } from '../../../lib/admin-console/essay-editor-values';
-import { shouldGuardAdminNavigation } from '../../../scripts/admin-console/navigation-guard';
+import { closeClosestAdminDetailsMenu } from '../../../scripts/admin-content/details-menu';
 import {
-  closeClosestAdminDetailsMenu,
-  initAdminDetailsMenus
-} from '../../../scripts/admin-content/details-menu';
-import {
-  getPayloadDeleteResult,
-  getPayloadErrors,
-  getPayloadEssayBody,
-  getPayloadEssayValues,
-  getPayloadIssues,
-  getPayloadPreviewResult,
-  getPayloadResult,
-  getPayloadRevision,
-  isPayloadOk,
-  parseResponseBody,
+  deleteEssayEntry,
+  renderEssayPreview,
+  saveEssayEntry,
   type AdminContentIssue,
   type AdminContentWriteResult
-} from '../../../scripts/admin-content/entry-transport';
+} from './essay-editor-client';
 import { flattenEntryIdToSlug } from '../../../utils/slug-rules';
-import ArticleInfoDialog from './ArticleInfoDialog.svelte';
-import BodyEditor from './BodyEditor.svelte';
-import EditorActionMenu from './EditorActionMenu.svelte';
-import EditorSidePanels from './EditorSidePanels.svelte';
-import EditorToolbar from './EditorToolbar.svelte';
-import ImageInsertDialog from './ImageInsertDialog.svelte';
+import EditorDialogs from './EditorDialogs.svelte';
+import EditorFooterActions from './EditorFooterActions.svelte';
+import EditorTopControls from './EditorTopControls.svelte';
+import EditorWorkspace from './EditorWorkspace.svelte';
+import {
+  bindArticleInfoTrigger,
+  bindEditorDetailsMenus,
+  bindEditorNavigationGuard,
+  collapseAdminSidebarByToggle,
+  mountEditorPageActionsPortal,
+  observeAdminSidebarExpandedState,
+  observeElementInlineSize,
+  queueElementInlineSizeRead,
+  syncArticleInfoTriggers
+} from './editor-page-integration';
 import {
   CONTENT_LIST_DELETE_FEEDBACK_STORAGE_KEY,
   CONTENT_LIST_DELETE_FEEDBACK_VALUE
 } from './content-list-feedback';
 import {
   buildContentExportHref,
-  clearAllScrollbarVisibilityTimers,
-  clearScrollbarVisibilityTimer,
   clearStoredWriteFeedback,
   getEditorSidePanelLayout,
-  getOppositeScrollSource,
   getPreviewDebounceMs,
-  getScrollableDistance,
-  getScrollRatio,
   getWriteFieldLabel,
-  markScrollElementScrolling,
   normalizeEditorTextareaValue,
   readStoredEditorLayout,
   readStoredEditorSidePanelPreference,
@@ -61,10 +52,10 @@ import {
   type EditorViewMode,
   type StatusState
 } from './editor-shell-helpers';
+import { createEditorScrollSyncController } from './editor-scroll-sync';
 import {
   buildEssayOutlineListItems,
   extractMarkdownOutline,
-  type EditorOutlineEssaySourceItem,
   type EditorOutlineTab,
   type MarkdownOutlineItem
 } from './editor-outline-helpers';
@@ -72,14 +63,9 @@ import {
   scrollPreviewToOutlineKey as scrollPreviewElementToOutlineKey,
   scrollTextareaToOutlineItem as scrollTextareaElementToOutlineItem
 } from './editor-outline-scroll';
-import {
-  type MarkdownCalloutType,
-  type MarkdownHeadingLevel,
-  type MarkdownToolbarCommand,
-  type MarkdownToolId
-} from './markdown-tools';
-import PreviewStatusBar from './PreviewStatusBar.svelte';
-import PreviewPane from './PreviewPane.svelte';
+import type { MarkdownToolbarCommand } from './markdown-tools';
+import { createMarkdownCommandDispatcher } from './editor-markdown-command-dispatcher';
+import type { EditorShellProps } from './editor-shell-props';
 
 const LEAVE_CONFIRM_MESSAGE = '当前有未保存更改，确定要离开此页吗？';
 const ARTICLE_INFO_TRIGGER_SELECTOR = '[data-admin-article-info-trigger]';
@@ -107,24 +93,6 @@ const WRITE_FEEDBACK_STORAGE_TTL_MS = 60 * 1000;
 const SCROLLBAR_VISIBILITY_TIMEOUT_MS = 800;
 const OUTLINE_TARGET_SCROLL_OFFSET_RATIO = 0.18;
 
-type Props = {
-  endpoint: string;
-  exportEndpoint: string;
-  deleteEndpoint: string;
-  previewEndpoint: string;
-  imageUploadEndpoint: string;
-  returnHref: string;
-  collection: 'essay';
-  entryId: string;
-  relativePath: string;
-  defaultPublicSlug: string;
-  revision: string;
-  initialFrontmatter: AdminEssayEditorValues;
-  initialBody: string;
-  essayOutlineItems?: EditorOutlineEssaySourceItem[];
-  initialArticleInfoOpen?: boolean;
-};
-
 let {
   endpoint,
   exportEndpoint,
@@ -141,7 +109,7 @@ let {
   initialBody,
   essayOutlineItems = [],
   initialArticleInfoOpen = false
-}: Props = $props();
+}: EditorShellProps = $props();
 
 const slugPlaceholder = $derived(defaultPublicSlug || flattenEntryIdToSlug(entryId));
 
@@ -187,11 +155,19 @@ let adminSidebarExpanded = $state(false);
 let sidePanelsSidebarCollapseAttempted = false;
 let sidePanelsSidebarCollapseCheckFrame: number | null = null;
 let previewInitialized = false;
-let toolbarCommandId = 0;
 let toolbarCommand = $state<MarkdownToolbarCommand | null>(null);
 let frontmatterPanelOpen = $state(initialSnapshot.articleInfoOpen);
-let articleInfoDialog = $state<ArticleInfoDialog | null>(null);
+let editorDialogs = $state<EditorDialogs | null>(null);
 let imageInsertOpen = $state(false);
+const markdownCommandDispatcher = createMarkdownCommandDispatcher({
+  isBusy: () => busy,
+  onCommand: (command) => {
+    toolbarCommand = command;
+  },
+  onOpenImageInsert: () => {
+    imageInsertOpen = true;
+  }
+});
 let editorShellEl = $state<HTMLElement | null>(null);
 let editorShellInlineSize = $state(0);
 let topActionsEl = $state<HTMLDivElement | null>(null);
@@ -199,14 +175,8 @@ let bodyScrollElement = $state<HTMLTextAreaElement | null>(null);
 let previewScrollElement = $state<HTMLElement | null>(null);
 let syncScrollEnabled = $state(true);
 let writeFeedbackRestored = false;
-let lastScrollSource: EditorScrollSource = 'body';
-let pendingScrollSyncSource: EditorScrollSource | null = null;
 let pendingPreviewOutlineKey = $state<string | null>(null);
 let pendingPreviewOutlineJumpId = 0;
-let scrollSyncFrame: number | null = null;
-let scrollSyncReleaseFrame: number | null = null;
-let applyingScrollSync = false;
-const scrollbarVisibilityTimers = new Map<HTMLElement, number>();
 
 const getOutlineMinInlineSize = (layout: EditorLayoutMode, viewMode: EditorViewMode): number =>
   layout === 'split' && viewMode === 'both'
@@ -222,34 +192,25 @@ const isOutlineAvailableForInlineSize = (inlineSize: number): boolean => {
   return !splitBothWouldBeCompact && inlineSize >= getOutlineMinInlineSize(editorLayout, editorViewMode);
 };
 
-const syncAdminSidebarExpandedState = () => {
-  if (typeof document === 'undefined') return;
-  adminSidebarExpanded = document.documentElement.dataset.adminSidebar === 'expanded';
-};
-
 const collapseExpandedAdminSidebar = (): boolean => {
-  if (typeof document === 'undefined') return false;
-  const root = document.documentElement;
-  if (root.dataset.adminSidebar !== 'expanded') return false;
-
-  const button = document.getElementById(ADMIN_SIDEBAR_TOGGLE_ID);
-  if (!(button instanceof HTMLButtonElement)) return false;
-
-  button.click();
-  syncAdminSidebarExpandedState();
-  return root.getAttribute('data-admin-sidebar') === 'collapsed';
+  const collapsed = collapseAdminSidebarByToggle({
+    toggleId: ADMIN_SIDEBAR_TOGGLE_ID
+  });
+  if (collapsed) adminSidebarExpanded = false;
+  return collapsed;
 };
 
 const queueSidePanelsAvailabilityCheck = () => {
-  if (typeof window === 'undefined') return;
-  if (sidePanelsSidebarCollapseCheckFrame !== null) {
-    window.cancelAnimationFrame(sidePanelsSidebarCollapseCheckFrame);
-  }
-
-  sidePanelsSidebarCollapseCheckFrame = window.requestAnimationFrame(() => {
-    sidePanelsSidebarCollapseCheckFrame = null;
-    const nextInlineSize = editorShellEl?.getBoundingClientRect().width ?? editorShellInlineSize;
-    editorShellInlineSize = nextInlineSize;
+  queueElementInlineSizeRead({
+    element: editorShellEl,
+    fallbackInlineSize: editorShellInlineSize,
+    existingFrame: sidePanelsSidebarCollapseCheckFrame,
+    onFrame: (frame) => {
+      sidePanelsSidebarCollapseCheckFrame = frame;
+    },
+    onInlineSize: (nextInlineSize) => {
+      editorShellInlineSize = nextInlineSize;
+    }
   });
 };
 
@@ -442,36 +403,6 @@ const setOutlineTab = (tab: EditorOutlineTab) => {
   storeCurrentSidePanelPreference({ outlineActiveTab: tab });
 };
 
-const applyToolbarTool = (toolId: MarkdownToolId) => {
-  if (busy) return;
-  if (toolId === 'image') {
-    imageInsertOpen = true;
-    return;
-  }
-
-  toolbarCommandId += 1;
-  toolbarCommand = { id: toolbarCommandId, kind: 'tool', toolId };
-};
-
-const applyHeadingLevel = (level: MarkdownHeadingLevel) => {
-  if (busy) return;
-
-  toolbarCommandId += 1;
-  toolbarCommand = { id: toolbarCommandId, kind: 'heading', level };
-};
-
-const applyCalloutType = (calloutType: MarkdownCalloutType) => {
-  if (busy) return;
-
-  toolbarCommandId += 1;
-  toolbarCommand = { id: toolbarCommandId, kind: 'callout', calloutType };
-};
-
-const insertMarkdownText = (text: string) => {
-  toolbarCommandId += 1;
-  toolbarCommand = { id: toolbarCommandId, kind: 'insert', text };
-};
-
 const closeImageInsert = () => {
   imageInsertOpen = false;
 };
@@ -487,99 +418,26 @@ const setPreviewScrollElement = (element: HTMLElement | null) => {
 const getScrollElement = (source: EditorScrollSource): HTMLElement | null =>
   source === 'body' ? bodyScrollElement : previewScrollElement;
 
-const cancelQueuedScrollSync = () => {
-  if (scrollSyncFrame === null) return;
-  window.cancelAnimationFrame(scrollSyncFrame);
-  scrollSyncFrame = null;
-  pendingScrollSyncSource = null;
-};
-
-const releaseScrollSyncGuard = (frameDelay = 1) => {
-  if (scrollSyncReleaseFrame !== null) {
-    window.cancelAnimationFrame(scrollSyncReleaseFrame);
-  }
-
-  let remainingFrames = Math.max(1, frameDelay);
-  const releaseOnFrame = () => {
-    remainingFrames -= 1;
-    if (remainingFrames > 0) {
-      scrollSyncReleaseFrame = window.requestAnimationFrame(releaseOnFrame);
-      return;
-    }
-
-    applyingScrollSync = false;
-    scrollSyncReleaseFrame = null;
-  };
-
-  scrollSyncReleaseFrame = window.requestAnimationFrame(releaseOnFrame);
-};
-
-const applyScrollSync = (source: EditorScrollSource) => {
-  const sourceElement = getScrollElement(source);
-  const targetElement = getScrollElement(getOppositeScrollSource(source));
-  if (!sourceElement || !targetElement) return;
-
-  const scrollRatio = getScrollRatio(sourceElement);
-  applyingScrollSync = true;
-  targetElement.scrollTop = getScrollableDistance(targetElement) * scrollRatio;
-  releaseScrollSyncGuard();
-};
-
-const queueScrollSync = (source: EditorScrollSource) => {
-  pendingScrollSyncSource = source;
-  if (scrollSyncFrame !== null) return;
-
-  scrollSyncFrame = window.requestAnimationFrame(() => {
-    const queuedSource = pendingScrollSyncSource;
-    scrollSyncFrame = null;
-    pendingScrollSyncSource = null;
-
-    if (!queuedSource || !syncScrollEnabled || !scrollSyncAvailable) return;
-    applyScrollSync(queuedSource);
-  });
-};
+const scrollSyncController = createEditorScrollSyncController({
+  getScrollElement,
+  isEnabled: () => syncScrollEnabled,
+  setEnabled: (enabled) => {
+    syncScrollEnabled = enabled;
+  },
+  isAvailable: () => scrollSyncAvailable,
+  scrollbarVisibilityTimeoutMs: SCROLLBAR_VISIBILITY_TIMEOUT_MS
+});
 
 const handleEditorPaneScroll = (source: EditorScrollSource) => {
-  const sourceElement = getScrollElement(source);
-  if (sourceElement) {
-    markScrollElementScrolling(scrollbarVisibilityTimers, sourceElement, SCROLLBAR_VISIBILITY_TIMEOUT_MS);
-  }
-
-  if (applyingScrollSync) return;
-
-  lastScrollSource = source;
-  if (!syncScrollEnabled || !scrollSyncAvailable) return;
-
-  queueScrollSync(source);
+  scrollSyncController.handlePaneScroll(source);
 };
 
 const toggleScrollSync = () => {
-  if (!scrollSyncAvailable) return;
-
-  const nextEnabled = !syncScrollEnabled;
-  syncScrollEnabled = nextEnabled;
-
-  if (nextEnabled) {
-    queueScrollSync(lastScrollSource);
-  }
+  scrollSyncController.toggleEnabled();
 };
 
 const scrollEditorPanesToTop = () => {
-  const scrollElements = [
-    effectiveViewMode === 'preview' ? null : bodyScrollElement,
-    effectiveViewMode === 'edit' ? null : previewScrollElement
-  ].filter(
-    (element): element is HTMLElement => element !== null
-  );
-  if (scrollElements.length === 0) return;
-
-  lastScrollSource = effectiveViewMode === 'preview' ? 'preview' : 'body';
-  cancelQueuedScrollSync();
-  applyingScrollSync = true;
-  scrollElements.forEach((element) => {
-    element.scrollTop = 0;
-  });
-  releaseScrollSyncGuard();
+  scrollSyncController.scrollToTop(effectiveViewMode);
 };
 
 const waitForAnimationFrame = (): Promise<void> =>
@@ -597,7 +455,7 @@ const scrollPreviewToOutlineTarget = (outlineKey: string): boolean => {
   );
   if (!scrolled || !previewElement) return false;
 
-  markScrollElementScrolling(scrollbarVisibilityTimers, previewElement, SCROLLBAR_VISIBILITY_TIMEOUT_MS);
+  scrollSyncController.markElementScrolling(previewElement);
   return true;
 };
 
@@ -611,7 +469,7 @@ const scrollTextareaToOutlineTarget = (item: MarkdownOutlineItem): boolean => {
   );
   if (!scrolled || !textarea) return false;
 
-  markScrollElementScrolling(scrollbarVisibilityTimers, textarea, SCROLLBAR_VISIBILITY_TIMEOUT_MS);
+  scrollSyncController.markElementScrolling(textarea);
   return true;
 };
 
@@ -621,8 +479,8 @@ const handleOutlineHeadingSelect = (item: MarkdownOutlineItem) => {
   let bodyScrolled = false;
   let previewScrolled = false;
 
-  cancelQueuedScrollSync();
-  applyingScrollSync = true;
+  scrollSyncController.cancelQueued();
+  scrollSyncController.setGuarded(true);
 
   try {
     if (shouldScrollPreview) {
@@ -634,16 +492,16 @@ const handleOutlineHeadingSelect = (item: MarkdownOutlineItem) => {
       bodyScrolled = scrollTextareaToOutlineTarget(item);
     }
   } finally {
-    releaseScrollSyncGuard(2);
+    scrollSyncController.releaseGuard(2);
   }
 
   if (bodyScrolled) {
-    lastScrollSource = 'body';
+    scrollSyncController.setLastSource('body');
     return;
   }
 
   if (previewScrolled) {
-    lastScrollSource = 'preview';
+    scrollSyncController.setLastSource('preview');
   }
 };
 
@@ -663,16 +521,16 @@ const runPendingPreviewOutlineJump = async (outlineKey: string) => {
     return;
   }
 
-  cancelQueuedScrollSync();
-  applyingScrollSync = true;
+  scrollSyncController.cancelQueued();
+  scrollSyncController.setGuarded(true);
   const scrolled = scrollPreviewToOutlineTarget(outlineKey);
   if (scrolled) {
     pendingPreviewOutlineKey = null;
-    lastScrollSource = 'preview';
+    scrollSyncController.setLastSource('preview');
   } else if (latestPreviewSource === body) {
     pendingPreviewOutlineKey = null;
   }
-  releaseScrollSyncGuard(2);
+  scrollSyncController.releaseGuard(2);
 };
 
 const closeFrontmatterPanel = () => {
@@ -681,7 +539,7 @@ const closeFrontmatterPanel = () => {
 
 const openFrontmatterPanel = (trigger?: HTMLElement | null) => {
   if (!frontmatterPanelOpen) {
-    articleInfoDialog?.captureReturnFocus(trigger);
+    editorDialogs?.captureReturnFocus(trigger);
   }
   frontmatterPanelOpen = true;
 };
@@ -715,43 +573,31 @@ const requestContentWrite = async () => {
   setStatus('loading', '内容保存中');
 
   try {
-    const requestPayload = {
+    const saveOutcome = await saveEssayEntry({
+      endpoint,
       collection,
       entryId,
       revision: currentRevision,
       frontmatter,
       ...(bodyDirty ? { body } : {})
-    };
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json; charset=utf-8'
-      },
-      cache: 'no-store',
-      body: JSON.stringify(requestPayload)
     });
 
-    const payload = await parseResponseBody(response);
-    const nextRevision = getPayloadRevision(payload);
-    if (nextRevision && response.ok) currentRevision = nextRevision;
+    if (saveOutcome.revision && saveOutcome.responseOk) currentRevision = saveOutcome.revision;
 
-    if (!response.ok || !isPayloadOk(payload)) {
-      const nextIssues = getPayloadIssues(payload);
-      issues = nextIssues;
-      errors = getPayloadErrors(payload);
+    if (!saveOutcome.responseOk || !saveOutcome.payloadOk) {
+      issues = saveOutcome.issues;
+      errors = saveOutcome.errors;
       if (errors.length === 0) {
         errors = ['保存失败，检查控制台日志'];
       }
-      if (response.status === 409) {
+      if (saveOutcome.status === 409) {
         window.alert(errors[0] ?? '检测到内容文件已在外部更新，已拒绝覆盖，请刷新当前条目后再保存');
       }
-      setStatus(response.status === 409 ? 'warn' : 'error', '保存失败');
+      setStatus(saveOutcome.status === 409 ? 'warn' : 'error', '保存失败');
       return;
     }
 
-    const result = getPayloadResult(payload);
+    const result = saveOutcome.result;
     if (!result) {
       errors = ['响应体缺少 result 字段，请检查开发日志'];
       setStatus('error', '保存失败');
@@ -759,12 +605,12 @@ const requestContentWrite = async () => {
     }
 
     writeResult = result;
-    const latestValues = getPayloadEssayValues(payload);
-    const latestBody = getPayloadEssayBody(payload);
+    const latestValues = saveOutcome.latestValues;
+    const latestBody = saveOutcome.latestBody;
     const nextBaseline = latestValues ? cloneFrontmatter(latestValues) : cloneFrontmatter(frontmatter);
     frontmatter = cloneFrontmatter(nextBaseline);
     baselineFrontmatter = cloneFrontmatter(nextBaseline);
-    baselineBody = latestBody ? normalizeEditorTextareaValue(latestBody) : body;
+    baselineBody = latestBody !== null ? normalizeEditorTextareaValue(latestBody) : body;
     body = baselineBody;
 
     const nextStatusState: StatusState = result.changed ? 'ok' : 'idle';
@@ -796,30 +642,22 @@ const requestPreview = async () => {
   previewWarnings = [];
 
   try {
-    const response = await fetch(previewEndpoint, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json; charset=utf-8'
-      },
-      cache: 'no-store',
-      signal: abortController.signal,
-      body: JSON.stringify({
-        collection,
-        entryId,
-        source: sourceSnapshot
-      })
+    const previewOutcome = await renderEssayPreview({
+      endpoint: previewEndpoint,
+      collection,
+      entryId,
+      source: sourceSnapshot,
+      signal: abortController.signal
     });
 
-    const payload = await parseResponseBody(response);
     if (requestId !== previewRequestId) return;
     if (sourceSnapshot !== body) {
       return;
     }
 
-    const previewResult = getPayloadPreviewResult(payload);
-    if (!response.ok || !isPayloadOk(payload) || !previewResult) {
-      const payloadErrors = getPayloadErrors(payload);
+    const previewResult = previewOutcome.result;
+    if (!previewOutcome.responseOk || !previewOutcome.payloadOk || !previewResult) {
+      const payloadErrors = previewOutcome.errors;
       previewError = payloadErrors[0] ?? '预览生成失败，请检查响应与控制台日志';
       setStatus('error', '预览生成失败');
       return;
@@ -897,33 +735,23 @@ const deleteContentEntry = async (event: MouseEvent) => {
   setStatus('loading', '正在移动到回收站');
 
   try {
-    const deleteResponse = await fetch(deleteEndpoint, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json; charset=utf-8'
-      },
-      cache: 'no-store',
-      body: JSON.stringify({
-        collection,
-        entryId,
-        revision: currentRevision,
-        expectedRelativePath: relativePath
-      })
+    const deleteOutcome = await deleteEssayEntry({
+      endpoint: deleteEndpoint,
+      collection,
+      entryId,
+      revision: currentRevision,
+      expectedRelativePath: relativePath
     });
-    const payload = await parseResponseBody(deleteResponse);
-    const nextRevision = getPayloadRevision(payload);
-    if (nextRevision) currentRevision = nextRevision;
+    if (deleteOutcome.revision) currentRevision = deleteOutcome.revision;
 
-    if (!deleteResponse.ok || !isPayloadOk(payload)) {
-      const payloadErrors = getPayloadErrors(payload);
-      errors = payloadErrors;
-      issues = getPayloadIssues(payload);
-      setStatus(deleteResponse.status === 409 ? 'warn' : 'error', payloadErrors[0] ?? '删除失败');
+    if (!deleteOutcome.responseOk || !deleteOutcome.payloadOk) {
+      errors = deleteOutcome.errors;
+      issues = deleteOutcome.issues;
+      setStatus(deleteOutcome.status === 409 ? 'warn' : 'error', deleteOutcome.errors[0] ?? '删除失败');
       return;
     }
 
-    const result = getPayloadDeleteResult(payload);
+    const result = deleteOutcome.result;
     if (!result || !result.deleted || !result.trashedPath) {
       errors = [];
       issues = [];
@@ -942,53 +770,6 @@ const deleteContentEntry = async (event: MouseEvent) => {
   } finally {
     busy = false;
   }
-};
-
-const handleGuardedNavigationClick = (event: MouseEvent) => {
-  if (!isDirty) return;
-  if (!(event.target instanceof Element)) return;
-
-  const anchor = event.target.closest('a[href]');
-  if (!(anchor instanceof HTMLAnchorElement)) return;
-
-  if (
-    !shouldGuardAdminNavigation({
-      isDirty,
-      currentUrl: window.location.href,
-      nextUrl: anchor.href,
-      button: event.button,
-      metaKey: event.metaKey,
-      ctrlKey: event.ctrlKey,
-      shiftKey: event.shiftKey,
-      altKey: event.altKey,
-      target: anchor.target,
-      download: anchor.hasAttribute('download')
-    })
-  ) {
-    return;
-  }
-
-  if (window.confirm(LEAVE_CONFIRM_MESSAGE)) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  setStatus('warn', '请先保存或还原');
-};
-
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-  if (!isDirty) return;
-
-  event.preventDefault();
-  Reflect.set(event, 'returnValue', '');
-};
-
-const handleArticleInfoTriggerClick = (event: MouseEvent) => {
-  if (!(event.target instanceof Element)) return;
-  const trigger = event.target.closest(ARTICLE_INFO_TRIGGER_SELECTOR);
-  if (!(trigger instanceof HTMLButtonElement)) return;
-
-  event.preventDefault();
-  toggleFrontmatterPanel(trigger);
 };
 
 $effect(() => {
@@ -1022,67 +803,45 @@ $effect(() => {
 });
 
 $effect(() => {
-  const shellEl = editorShellEl;
-  if (!shellEl || typeof ResizeObserver === 'undefined') return;
+  return observeElementInlineSize({
+    element: editorShellEl,
+    onInlineSize: (nextInlineSize) => {
+      editorShellInlineSize = nextInlineSize;
+    }
+  });
+});
 
-  const syncShellInlineSize = (nextInlineSize?: number) => {
-    editorShellInlineSize = nextInlineSize ?? shellEl.getBoundingClientRect().width;
-  };
-  const observer = new ResizeObserver((entries) => {
-    syncShellInlineSize(entries[0]?.contentRect.width);
+$effect(() => {
+  return mountEditorPageActionsPortal({
+    actionsEl: topActionsEl,
+    hostSelector: PAGE_ACTIONS_HOST_SELECTOR
+  });
+});
+
+$effect(() => {
+  const cleanupDetailsMenus = bindEditorDetailsMenus({
+    selectors: [
+      '.admin-editor-shell__preview-detail',
+      '.admin-editor-markdown-toolbar__menu',
+      '.admin-editor-shell__action-more'
+    ]
+  });
+  const cleanupNavigationGuard = bindEditorNavigationGuard({
+    isDirty: () => isDirty,
+    message: LEAVE_CONFIRM_MESSAGE,
+    onBlocked: () => {
+      setStatus('warn', '请先保存或还原');
+    }
+  });
+  const cleanupArticleInfoTrigger = bindArticleInfoTrigger({
+    selector: ARTICLE_INFO_TRIGGER_SELECTOR,
+    onToggle: toggleFrontmatterPanel
   });
 
-  syncShellInlineSize();
-  observer.observe(shellEl);
   return () => {
-    observer.disconnect();
-  };
-});
-
-$effect(() => {
-  if (typeof document === 'undefined') return;
-  const actionsEl = topActionsEl;
-  const host = document.querySelector<HTMLElement>(PAGE_ACTIONS_HOST_SELECTOR);
-  if (!actionsEl || !host) return;
-
-  const placeholder = document.createComment('admin-editor-page-actions');
-  const originalParent = actionsEl.parentNode;
-  const originalNextSibling = actionsEl.nextSibling;
-  originalParent?.insertBefore(placeholder, actionsEl);
-  host.append(actionsEl);
-
-  return () => {
-    if (placeholder.parentNode) {
-      placeholder.replaceWith(actionsEl);
-      return;
-    }
-
-    originalParent?.insertBefore(actionsEl, originalNextSibling);
-  };
-});
-
-$effect(() => {
-  const cleanupDetailsMenus = [
-    initAdminDetailsMenus({
-      selector: '.admin-editor-shell__preview-detail'
-    }),
-    initAdminDetailsMenus({
-      selector: '.admin-editor-markdown-toolbar__menu'
-    }),
-    initAdminDetailsMenus({
-      selector: '.admin-editor-shell__action-more'
-    })
-  ];
-
-  document.addEventListener('click', handleGuardedNavigationClick, true);
-  document.addEventListener('click', handleArticleInfoTriggerClick);
-  window.addEventListener('beforeunload', handleBeforeUnload);
-
-  return () => {
-    cleanupDetailsMenus.forEach((cleanup) => cleanup());
-    document.removeEventListener('click', handleGuardedNavigationClick, true);
-    document.removeEventListener('click', handleArticleInfoTriggerClick);
-    window.removeEventListener('beforeunload', handleBeforeUnload);
+    cleanupDetailsMenus();
+    cleanupNavigationGuard();
+    cleanupArticleInfoTrigger();
   };
 });
 
@@ -1101,7 +860,7 @@ $effect(() => {
 
   const handlePreviewContentLoad = () => {
     if (syncScrollEnabled && scrollSyncAvailable) {
-      queueScrollSync(lastScrollSource);
+      scrollSyncController.queueLastSource();
     }
   };
 
@@ -1110,15 +869,15 @@ $effect(() => {
   previewElement.addEventListener('load', handlePreviewContentLoad, true);
 
   if (syncScrollEnabled) {
-    queueScrollSync(lastScrollSource);
+    scrollSyncController.queueLastSource();
   }
 
   return () => {
     bodyElement.removeEventListener('scroll', handleBodyScroll);
     previewElement.removeEventListener('scroll', handlePreviewScroll);
     previewElement.removeEventListener('load', handlePreviewContentLoad, true);
-    clearScrollbarVisibilityTimer(scrollbarVisibilityTimers, bodyElement);
-    clearScrollbarVisibilityTimer(scrollbarVisibilityTimers, previewElement);
+    scrollSyncController.clearElement(bodyElement);
+    scrollSyncController.clearElement(previewElement);
   };
 });
 
@@ -1130,19 +889,11 @@ $effect(() => {
 });
 
 $effect(() => {
-  if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
-
-  const root = document.documentElement;
-  syncAdminSidebarExpandedState();
-  const observer = new MutationObserver(syncAdminSidebarExpandedState);
-  observer.observe(root, {
-    attributes: true,
-    attributeFilter: ['data-admin-sidebar']
+  return observeAdminSidebarExpandedState({
+    onChange: (expanded) => {
+      adminSidebarExpanded = expanded;
+    }
   });
-
-  return () => {
-    observer.disconnect();
-  };
 });
 
 $effect(() => {
@@ -1151,23 +902,17 @@ $effect(() => {
       window.cancelAnimationFrame(sidePanelsSidebarCollapseCheckFrame);
       sidePanelsSidebarCollapseCheckFrame = null;
     }
-    cancelQueuedScrollSync();
-    if (scrollSyncReleaseFrame !== null) {
-      window.cancelAnimationFrame(scrollSyncReleaseFrame);
-      scrollSyncReleaseFrame = null;
-    }
-    clearAllScrollbarVisibilityTimers(scrollbarVisibilityTimers);
+    scrollSyncController.destroy();
   };
 });
 
 $effect(() => {
-  const triggers = document.querySelectorAll<HTMLButtonElement>(ARTICLE_INFO_TRIGGER_SELECTOR);
-  triggers.forEach((trigger) => {
-    trigger.setAttribute('aria-controls', FRONTMATTER_PANEL_ID);
-    trigger.setAttribute('aria-expanded', frontmatterPanelOpen ? 'true' : 'false');
-    trigger.dataset.state = frontmatterPanelOpen ? 'open' : 'closed';
-    trigger.dataset.dirty = frontmatterDirty ? 'true' : 'false';
-    trigger.dataset.invalid = frontmatterIssueCount > 0 ? 'true' : 'false';
+  syncArticleInfoTriggers({
+    selector: ARTICLE_INFO_TRIGGER_SELECTOR,
+    panelId: FRONTMATTER_PANEL_ID,
+    open: frontmatterPanelOpen,
+    dirty: frontmatterDirty,
+    invalid: frontmatterIssueCount > 0
   });
 });
 
@@ -1237,7 +982,8 @@ $effect(() => {
   data-effective-view={effectiveViewMode}
   data-side-panel={sidePanelLayout}
 >
-  <EditorToolbar
+  <EditorTopControls
+    bind:actionMenuElement={topActionsEl}
     {busy}
     outlineOpen={outlineWantedOpen}
     {outlineVisible}
@@ -1260,23 +1006,18 @@ $effect(() => {
     {editViewToggleLabel}
     {previewViewToggleLabel}
     {effectiveViewMode}
-    onApplyTool={applyToolbarTool}
-    onApplyHeading={applyHeadingLevel}
-    onApplyCallout={applyCalloutType}
+    onApplyTool={markdownCommandDispatcher.applyTool}
+    onApplyHeading={markdownCommandDispatcher.applyHeading}
+    onApplyCallout={markdownCommandDispatcher.applyCallout}
     onToggleOutline={toggleOutline}
     onToggleSyntax={toggleSyntax}
     onToggleLayout={toggleEditorLayout}
     onToggleView={toggleEditorViewMode}
     onReturnToBothView={returnToBothView}
     onToggleCompactPane={toggleCompactPaneMode}
-  />
-
-  <EditorActionMenu
-    bind:element={topActionsEl}
     {statusText}
     {statusState}
     {canWriteContent}
-    {busy}
     dirty={isDirty}
     {returnHref}
     {exportHref}
@@ -1286,98 +1027,71 @@ $effect(() => {
     onDelete={deleteContentEntry}
   />
 
-  <div class="admin-editor-shell__layout">
-    <div class="admin-editor-shell__workspace">
-      <div class="admin-editor-shell__pane admin-editor-shell__pane--body" hidden={effectiveViewMode === 'preview'}>
-        <BodyEditor
-          bind:value={body}
-          disabled={busy}
-          {toolbarCommand}
-          onScrollElementChange={setBodyScrollElement}
-          onShortcutTool={applyToolbarTool}
-        />
-      </div>
-      <PreviewStatusBar
-        {bodyLineCount}
-        {bodyCharCount}
-        {errors}
-        {issues}
-        {previewError}
-        {previewWarnings}
-        writeResult={visibleWriteResult}
-        {syncScrollEnabled}
-        {scrollSyncToggleLabel}
-        {scrollSyncControlDisabled}
-        {scrollTopControlDisabled}
-        {getWriteFieldLabel}
-        onToggleScrollSync={toggleScrollSync}
-        onScrollToTop={scrollEditorPanesToTop}
-      />
-      <div class="admin-editor-shell__pane admin-editor-shell__pane--preview" hidden={effectiveViewMode === 'edit'}>
-        <PreviewPane
-          html={previewHtml}
-          loading={previewBusy}
-          error={previewError}
-          onScrollElementChange={setPreviewScrollElement}
-        />
-      </div>
-    </div>
-    {#if sidePanelsVisible}
-      <EditorSidePanels
-        layout={sidePanelLayout}
-        outlinePanelId={OUTLINE_PANEL_ID}
-        syntaxPanelId={SYNTAX_PANEL_ID}
-        activeTab={outlineActiveTab}
-        headings={markdownOutlineItems}
-        essays={essayOutlineListItems}
-        onTabChange={setOutlineTab}
-        onHeadingSelect={handleOutlineHeadingSelect}
-        onSyntaxMaximizeToggle={toggleSyntaxMaximize}
-      />
-    {/if}
-  </div>
+  <EditorWorkspace
+    bind:value={body}
+    disabled={busy}
+    {toolbarCommand}
+    {effectiveViewMode}
+    {bodyLineCount}
+    {bodyCharCount}
+    {errors}
+    {issues}
+    {previewError}
+    {previewWarnings}
+    writeResult={visibleWriteResult}
+    {syncScrollEnabled}
+    {scrollSyncToggleLabel}
+    {scrollSyncControlDisabled}
+    {scrollTopControlDisabled}
+    {getWriteFieldLabel}
+    {previewHtml}
+    previewBusy={previewBusy}
+    {sidePanelsVisible}
+    {sidePanelLayout}
+    outlinePanelId={OUTLINE_PANEL_ID}
+    syntaxPanelId={SYNTAX_PANEL_ID}
+    {outlineActiveTab}
+    {markdownOutlineItems}
+    {essayOutlineListItems}
+    onBodyScrollElementChange={setBodyScrollElement}
+    onPreviewScrollElementChange={setPreviewScrollElement}
+    onShortcutTool={markdownCommandDispatcher.applyTool}
+    onToggleScrollSync={toggleScrollSync}
+    onScrollToTop={scrollEditorPanesToTop}
+    onOutlineTabChange={setOutlineTab}
+    onOutlineHeadingSelect={handleOutlineHeadingSelect}
+    onSyntaxMaximizeToggle={toggleSyntaxMaximize}
+  />
 
-  <ArticleInfoDialog
-    bind:this={articleInfoDialog}
-    bind:value={frontmatter}
-    open={frontmatterPanelOpen}
+  <EditorDialogs
+    bind:this={editorDialogs}
+    bind:frontmatter
+    frontmatterOpen={frontmatterPanelOpen}
     {relativePath}
     {issues}
     disabled={busy}
-    dirty={frontmatterDirty}
+    {frontmatterDirty}
     canSave={canWriteContent}
     {slugPlaceholder}
-    onClose={closeFrontmatterPanel}
-    onReset={resetFrontmatterToBaseline}
-    onSave={() => void requestContentWrite()}
-  />
-
-  <ImageInsertDialog
-    open={imageInsertOpen}
-    uploadEndpoint={imageUploadEndpoint}
+    {imageInsertOpen}
+    {imageUploadEndpoint}
     {entryId}
-    disabled={busy}
-    onClose={closeImageInsert}
-    onInsert={(markdown) => {
-      insertMarkdownText(markdown);
+    onFrontmatterClose={closeFrontmatterPanel}
+    onFrontmatterReset={resetFrontmatterToBaseline}
+    onFrontmatterSave={() => void requestContentWrite()}
+    onImageClose={closeImageInsert}
+    onImageInsert={(markdown) => {
+      markdownCommandDispatcher.insertText(markdown);
     }}
   />
 
-  <div class="admin-content-toolbar__footer admin-editor-shell__actions">
-    <div class="admin-editor-shell__footer-copy">
-      {#if statusText}
-        <div class="admin-editor-shell__status">
-          <p class="admin-status admin-status--inline" data-state={statusState} role="status" aria-live="polite" aria-atomic="true">{statusText}</p>
-        </div>
-      {/if}
-    </div>
-    <div class="admin-content-actions">
-      <button class="admin-btn admin-btn--ghost admin-btn--compact" type="button" onclick={resetToBaseline} disabled={busy || !isDirty}>
-        还原
-      </button>
-      <button class="admin-btn admin-btn--secondary admin-btn--compact" type="button" onclick={() => void requestContentWrite()} disabled={!canWriteContent}>
-        保存内容
-      </button>
-    </div>
-  </div>
+  <EditorFooterActions
+    {statusText}
+    {statusState}
+    {busy}
+    dirty={isDirty}
+    {canWriteContent}
+    onReset={resetToBaseline}
+    onSave={requestContentWrite}
+  />
 </section>

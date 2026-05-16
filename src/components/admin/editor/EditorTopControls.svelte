@@ -1,0 +1,152 @@
+<script lang="ts">
+import type {
+  EditorViewMode,
+  StatusState
+} from './editor-shell-helpers';
+import type {
+  MarkdownCalloutType,
+  MarkdownHeadingLevel,
+  MarkdownToolId
+} from './markdown-tools';
+import EditorActionMenu from './EditorActionMenu.svelte';
+import EditorToolbar from './EditorToolbar.svelte';
+
+type Props = {
+  actionMenuElement: HTMLDivElement | null;
+  busy: boolean;
+  outlineOpen: boolean;
+  outlineVisible: boolean;
+  outlineToggleLabel: string;
+  outlineControlDisabled: boolean;
+  outlinePanelId: string;
+  syntaxOpen: boolean;
+  syntaxVisible: boolean;
+  syntaxToggleLabel: string;
+  syntaxControlDisabled: boolean;
+  syntaxPanelId: string;
+  editorLayoutIsSplit: boolean;
+  editorLayoutToggleLabel: string;
+  editorLayoutToggleIcon: 'columns-2' | 'rows-2' | 'undo-2';
+  singleViewActive: boolean;
+  singleViewReturnLabel: string;
+  splitBothIsCompact: boolean;
+  compactPaneToggleLabel: string;
+  compactPaneToggleText: string;
+  editViewToggleLabel: string;
+  previewViewToggleLabel: string;
+  effectiveViewMode: EditorViewMode;
+  statusText: string;
+  statusState: StatusState;
+  canWriteContent: boolean;
+  dirty: boolean;
+  returnHref: string;
+  exportHref: string;
+  onApplyTool: (toolId: MarkdownToolId) => void;
+  onApplyHeading: (level: MarkdownHeadingLevel) => void;
+  onApplyCallout: (calloutType: MarkdownCalloutType) => void;
+  onToggleOutline: () => void;
+  onToggleSyntax: () => void;
+  onToggleLayout: () => void;
+  onToggleView: (viewMode: Exclude<EditorViewMode, 'both'>) => void;
+  onReturnToBothView: () => void;
+  onToggleCompactPane: () => void;
+  onSave: () => void | Promise<void>;
+  onReset: (event: MouseEvent) => void;
+  onDownload: (event: MouseEvent) => void;
+  onDelete: (event: MouseEvent) => void | Promise<void>;
+};
+
+let {
+  actionMenuElement = $bindable(null),
+  busy,
+  outlineOpen,
+  outlineVisible,
+  outlineToggleLabel,
+  outlineControlDisabled,
+  outlinePanelId,
+  syntaxOpen,
+  syntaxVisible,
+  syntaxToggleLabel,
+  syntaxControlDisabled,
+  syntaxPanelId,
+  editorLayoutIsSplit,
+  editorLayoutToggleLabel,
+  editorLayoutToggleIcon,
+  singleViewActive,
+  singleViewReturnLabel,
+  splitBothIsCompact,
+  compactPaneToggleLabel,
+  compactPaneToggleText,
+  editViewToggleLabel,
+  previewViewToggleLabel,
+  effectiveViewMode,
+  statusText,
+  statusState,
+  canWriteContent,
+  dirty,
+  returnHref,
+  exportHref,
+  onApplyTool,
+  onApplyHeading,
+  onApplyCallout,
+  onToggleOutline,
+  onToggleSyntax,
+  onToggleLayout,
+  onToggleView,
+  onReturnToBothView,
+  onToggleCompactPane,
+  onSave,
+  onReset,
+  onDownload,
+  onDelete
+}: Props = $props();
+</script>
+
+<EditorToolbar
+  {busy}
+  {outlineOpen}
+  {outlineVisible}
+  {outlineToggleLabel}
+  {outlineControlDisabled}
+  {outlinePanelId}
+  {syntaxOpen}
+  {syntaxVisible}
+  {syntaxToggleLabel}
+  {syntaxControlDisabled}
+  {syntaxPanelId}
+  {editorLayoutIsSplit}
+  {editorLayoutToggleLabel}
+  {editorLayoutToggleIcon}
+  {singleViewActive}
+  {singleViewReturnLabel}
+  {splitBothIsCompact}
+  {compactPaneToggleLabel}
+  {compactPaneToggleText}
+  {editViewToggleLabel}
+  {previewViewToggleLabel}
+  {effectiveViewMode}
+  {onApplyTool}
+  {onApplyHeading}
+  {onApplyCallout}
+  {onToggleOutline}
+  {onToggleSyntax}
+  {onToggleLayout}
+  {onToggleView}
+  {onReturnToBothView}
+  {onToggleCompactPane}
+/>
+
+<EditorActionMenu
+  bind:element={actionMenuElement}
+  {statusText}
+  {statusState}
+  {canWriteContent}
+  {busy}
+  {dirty}
+  {returnHref}
+  {exportHref}
+  {onSave}
+  {onReset}
+  {onDownload}
+  {onDelete}
+/>
