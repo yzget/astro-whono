@@ -1,5 +1,6 @@
 export type MarkdownHeadingLevel = 2 | 3 | 4 | 5;
 export type MarkdownCalloutType = 'note' | 'tip' | 'info' | 'warning';
+export type MarkdownInsertPlacement = 'inline' | 'block';
 
 export type MarkdownToolId =
   | 'bold'
@@ -10,6 +11,9 @@ export type MarkdownToolId =
   | 'image'
   | 'code'
   | 'codeBlock'
+  | 'inlineMath'
+  | 'blockMath'
+  | 'details'
   | 'list'
   | 'orderedList'
   | 'taskList'
@@ -35,6 +39,15 @@ export type MarkdownToolbarCommand =
       id: number;
       kind: 'insert';
       text: string;
+      placement?: MarkdownInsertPlacement;
+    }
+  | {
+      id: number;
+      kind: 'replace';
+      from: number;
+      to: number;
+      text: string;
+      placement?: MarkdownInsertPlacement;
     };
 
 export const buildMarkdownCalloutText = (calloutType: MarkdownCalloutType): string =>

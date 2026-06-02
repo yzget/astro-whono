@@ -6,6 +6,7 @@ import type {
 import type {
   MarkdownCalloutType,
   MarkdownHeadingLevel,
+  MarkdownInsertPlacement,
   MarkdownToolId
 } from './markdown-tools';
 import type { MarkdownHighlightTheme } from './editor-markdown-highlight';
@@ -48,6 +49,8 @@ type Props = {
   onApplyTool: (toolId: MarkdownToolId) => void;
   onApplyHeading: (level: MarkdownHeadingLevel) => void;
   onApplyCallout: (calloutType: MarkdownCalloutType) => void;
+  onInsertText: (text: string, placement?: MarkdownInsertPlacement) => void;
+  onOpenGallery: () => void;
   onToggleOutline: () => void;
   onToggleSyntax: () => void;
   onToggleLineNumbers: () => void;
@@ -98,6 +101,8 @@ let {
   onApplyTool,
   onApplyHeading,
   onApplyCallout,
+  onInsertText,
+  onOpenGallery,
   onToggleOutline,
   onToggleSyntax,
   onToggleLineNumbers,
@@ -142,6 +147,8 @@ let {
   {onApplyTool}
   {onApplyHeading}
   {onApplyCallout}
+  {onInsertText}
+  {onOpenGallery}
   {onToggleOutline}
   {onToggleSyntax}
   {onToggleLineNumbers}

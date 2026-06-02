@@ -302,8 +302,9 @@ author:
 ### Writing Conventions (Content Blocks)
 
 - Callout: recommended directive syntax `:::note[title] ... :::` (`note` / `tip` / `info` / `warning`); in HTML form use `.callout-title`, and use `data-icon="none"` to hide icon
-- Figure: `figure > (img|picture) + figcaption?`
-- Gallery: `ul.gallery > li > figure > (img|picture) + figcaption?` (optional `cols-2` / `cols-3`)
+- Figure: `figure.figure > (img|picture) + figcaption.figure-caption?`; optional `figure--sm/md/lg/full` and `figure--left/center/right`
+- Gallery: `ul.gallery > li > figure > (img|picture) + figcaption?`; optional `cols-2` / `cols-3`
+- Math: double-dollar syntax is supported, with inline `$$x$$` and block `$$ ... $$`; single-dollar `$x$` is not parsed as math
 - Quote: standard `blockquote`, optional `cite` for source
 - Pullquote: `blockquote.pullquote`
 - Code Block: toolbar / copy button / line numbers are enhanced at build time (no extra author-side syntax needed)

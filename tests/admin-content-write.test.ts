@@ -515,6 +515,92 @@ describe('admin content write api', () => {
     );
   });
 
+  it('repairs semantically invalid current essay frontmatter instead of failing before next validation', async () => {
+    const essayPath = path.join(tempRoot, 'src', 'content', 'essay', 'broken-current.md');
+    await writeFile(
+      essayPath,
+      [
+        '---',
+        'title: 42',
+        'date: not-a-date',
+        'tags:',
+        '  - keep',
+        '  - 99',
+        'draft: "false"',
+        'archive: "yes"',
+        'cover: 42',
+        '---',
+        '',
+        'broken body',
+        ''
+      ].join('\n'),
+      'utf8'
+    );
+
+    const { readAdminContentEntryEditorPayload } = await import('../src/lib/admin-console/content-shared');
+    const { POST } = await import('../src/pages/api/admin/content/entry');
+    const current = await readAdminContentEntryEditorPayload('essay', 'broken-current');
+    if (current.collection !== 'essay') {
+      throw new Error('Expected essay editor payload');
+    }
+
+    const invalidNextResponse = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1', {
+        collection: 'essay',
+        entryId: 'broken-current',
+        revision: current.revision,
+        frontmatter: {
+          ...current.values,
+          title: 'Still Invalid',
+          date: 'not-a-date'
+        }
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1')
+    } as never);
+
+    expect(invalidNextResponse.status).toBe(400);
+    const invalidNextPayload = JSON.parse(await invalidNextResponse.text());
+    expect(invalidNextPayload.ok).toBe(false);
+    expect(invalidNextPayload.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'date' })
+      ])
+    );
+
+    const response = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry', {
+        collection: 'essay',
+        entryId: 'broken-current',
+        revision: current.revision,
+        frontmatter: {
+          ...current.values,
+          title: 'Repaired Essay',
+          date: '2026-05-26',
+          tagsText: 'fixed',
+          draft: false,
+          archive: true
+        }
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.ok).toBe(true);
+    expect(payload.result.changedFields).toEqual(
+      expect.arrayContaining(['title', 'date', 'tags', 'draft', 'archive', 'cover'])
+    );
+
+    const after = await readFile(essayPath, 'utf8');
+    expect(after).toContain('title: Repaired Essay');
+    expect(after).toContain('date: 2026-05-26');
+    expect(after).toContain('tags:');
+    expect(after).toContain('- fixed');
+    expect(after).toContain('draft: false');
+    expect(after).toContain('archive: true');
+    expect(after).not.toContain('cover: 42');
+  });
+
   it('supports dry-run and real writes for essay body while preserving frontmatter bytes', async () => {
     const { readAdminContentEntryEditorPayload } = await import('../src/lib/admin-console/content-shared');
     const { splitMarkdownFrontmatter } = await import('../src/lib/admin-console/frontmatter');
@@ -565,6 +651,136 @@ describe('admin content write api', () => {
     const afterSection = splitMarkdownFrontmatter(after);
     expect(afterSection.frontmatterBlock).toBe(beforeSection.frontmatterBlock);
     expect(afterSection.bodyText).toBe(nextBody);
+  });
+
+  it('allows essay saves when local image references exist or are outside the local-relative check', async () => {
+    const { readAdminContentEntryEditorPayload } = await import('../src/lib/admin-console/content-shared');
+    const { POST } = await import('../src/pages/api/admin/content/entry');
+
+    await mkdir(path.join(tempRoot, 'src', 'content', 'essay', 'demo-assets'), { recursive: true });
+    await writeFile(path.join(tempRoot, 'src', 'content', 'essay', 'demo-assets', 'existing.webp'), 'image');
+
+    const current = await readAdminContentEntryEditorPayload('essay', 'demo');
+    const nextBody = [
+      '# Essay',
+      '',
+      '![Existing](./demo-assets/existing.webp)',
+      '![Remote](https://example.com/image.webp)',
+      '![Public](/images/archive/demo.webp)',
+      '<figure class="hero-figure"><img src="./demo-assets/missing-custom-figure.webp" alt="Custom" /></figure>',
+      '<ul class="gallery cols-2"><li><figure><img src="./demo-assets/existing.webp" alt="Existing gallery" /></figure></li></ul>',
+      '<ul class="gallery"><li><figure><img src="https://example.com/gallery.webp" alt="Remote gallery" /></figure></li></ul>',
+      '<ul class="not-gallery"><li><figure><img src="./demo-assets/missing-custom-gallery.webp" alt="Custom gallery" /></figure></li></ul>',
+      '`![Inline code](./demo-assets/missing-inline-code.webp)`',
+      '<!-- ![Commented](./demo-assets/missing-comment.webp) -->',
+      '```md',
+      '![Ignored](./demo-assets/missing-in-code.webp)',
+      '```',
+      ''
+    ].join('\n');
+
+    const response = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1', {
+        collection: 'essay',
+        entryId: 'demo',
+        revision: current.revision,
+        frontmatter: current.values,
+        body: nextBody
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.ok).toBe(true);
+    expect(payload.result.changedFields).toEqual(['body']);
+  });
+
+  it('rejects essay body saves when submitted body references missing local images', async () => {
+    const { readAdminContentEntryEditorPayload } = await import('../src/lib/admin-console/content-shared');
+    const { POST } = await import('../src/pages/api/admin/content/entry');
+
+    await writeFile(
+      path.join(tempRoot, 'src', 'content', 'essay', 'demo.md'),
+      [
+        '---',
+        'title: Demo Essay',
+        'date: 2026-03-18',
+        'draft: false',
+        '---',
+        '',
+        '# Essay',
+        '',
+        '![Missing](./demo-assets/missing.webp)',
+        '',
+        '<figure class="figure figure--md">',
+        '  <img src="./demo-assets/missing-figure.webp" alt="Missing figure" />',
+        '</figure>',
+        '',
+        '<ul class="gallery cols-2">',
+        '  <li><figure><img src="./demo-assets/missing-gallery.webp" alt="Missing gallery" /></figure></li>',
+        '</ul>',
+        '',
+        '```html',
+        '<figure class="figure"><img src="./demo-assets/missing-in-code.webp" alt="" /></figure>',
+        '```',
+        ''
+      ].join('\n'),
+      'utf8'
+    );
+
+    const current = await readAdminContentEntryEditorPayload('essay', 'demo');
+    if (current.collection !== 'essay') {
+      throw new Error('Expected essay editor payload');
+    }
+
+    const frontmatterOnlyResponse = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1', {
+        collection: 'essay',
+        entryId: 'demo',
+        revision: current.revision,
+        frontmatter: {
+          ...current.values,
+          title: 'Demo Essay Updated'
+        }
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1')
+    } as never);
+
+    expect(frontmatterOnlyResponse.status).toBe(200);
+    const frontmatterOnlyPayload = JSON.parse(await frontmatterOnlyResponse.text());
+    expect(frontmatterOnlyPayload.ok).toBe(true);
+    expect(frontmatterOnlyPayload.result.changedFields).toEqual(['title']);
+
+    const response = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1', {
+        collection: 'essay',
+        entryId: 'demo',
+        revision: current.revision,
+        frontmatter: current.values,
+        body: current.bodyText
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1')
+    } as never);
+
+    expect(response.status).toBe(400);
+    const payload = JSON.parse(await response.text());
+    expect(payload.ok).toBe(false);
+    expect(payload.errors).toEqual(
+      expect.arrayContaining([
+        '正文引用的本地图片不存在：src/content/essay/demo-assets/missing.webp',
+        '正文引用的本地图片不存在：src/content/essay/demo-assets/missing-figure.webp',
+        '正文引用的本地图片不存在：src/content/essay/demo-assets/missing-gallery.webp'
+      ])
+    );
+    expect(payload.errors).not.toContain(
+      '正文引用的本地图片不存在：src/content/essay/demo-assets/missing-in-code.webp'
+    );
+    expect(payload.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'body' })
+      ])
+    );
   });
 
   it('returns field issues for invalid bits author avatar paths', async () => {
@@ -675,6 +891,109 @@ describe('admin content write api', () => {
         expect.objectContaining({ path: 'images[2].height' })
       ])
     );
+  });
+
+  it('repairs semantically invalid current bits frontmatter instead of failing before next validation', async () => {
+    const bitsPath = path.join(tempRoot, 'src', 'content', 'bits', 'broken-current.md');
+    await writeFile(
+      bitsPath,
+      [
+        '---',
+        'title: 42',
+        'date: not-a-date',
+        'tags:',
+        '  - Bits',
+        '  - 99',
+        'draft: "false"',
+        'author:',
+        '  name: 77',
+        '  avatar: https://example.com/avatar.webp',
+        'images:',
+        '  - src: ftp://bad.example/image.webp',
+        '    width: -1',
+        '---',
+        '',
+        'broken bit',
+        ''
+      ].join('\n'),
+      'utf8'
+    );
+
+    const { readAdminContentEntryEditorPayload } = await import('../src/lib/admin-console/content-shared');
+    const { POST } = await import('../src/pages/api/admin/content/entry');
+    const current = await readAdminContentEntryEditorPayload('bits', 'broken-current');
+    if (current.collection !== 'bits') {
+      throw new Error('Expected bits editor payload');
+    }
+
+    const invalidNextResponse = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1', {
+        collection: 'bits',
+        entryId: 'broken-current',
+        revision: current.revision,
+        frontmatter: {
+          ...current.values,
+          title: 'Still Invalid',
+          date: 'still-not-a-date',
+          imagesText: '{not json'
+        }
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry?dryRun=1')
+    } as never);
+
+    expect(invalidNextResponse.status).toBe(400);
+    const invalidNextPayload = JSON.parse(await invalidNextResponse.text());
+    expect(invalidNextPayload.ok).toBe(false);
+    expect(invalidNextPayload.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'date' }),
+        expect.objectContaining({ path: 'imagesText' })
+      ])
+    );
+
+    const response = await POST({
+      request: createJsonRequest('http://127.0.0.1:4321/api/admin/content/entry', {
+        collection: 'bits',
+        entryId: 'broken-current',
+        revision: current.revision,
+        frontmatter: {
+          ...current.values,
+          title: 'Repaired Bit',
+          date: '2026-05-26T18:30:00+08:00',
+          tagsText: 'Bits\nfixed',
+          draft: false,
+          authorName: 'Alice',
+          authorAvatar: 'author/alice.webp',
+          imagesText: JSON.stringify([
+            {
+              src: 'bits/fixed.webp',
+              width: 800,
+              height: 600,
+              alt: 'fixed image'
+            }
+          ])
+        }
+      }),
+      url: new URL('http://127.0.0.1:4321/api/admin/content/entry')
+    } as never);
+
+    expect(response.status).toBe(200);
+    const payload = JSON.parse(await response.text());
+    expect(payload.ok).toBe(true);
+    expect(payload.result.changedFields).toEqual(
+      expect.arrayContaining(['title', 'date', 'tags', 'draft', 'author', 'images'])
+    );
+
+    const after = await readFile(bitsPath, 'utf8');
+    expect(after).toContain('title: Repaired Bit');
+    expect(after).toContain('date: 2026-05-26T18:30:00+08:00');
+    expect(after).toContain('- fixed');
+    expect(after).toContain('draft: false');
+    expect(after).toContain('name: Alice');
+    expect(after).toContain('avatar: author/alice.webp');
+    expect(after).toContain('src: bits/fixed.webp');
+    expect(after).toContain('width: 800');
+    expect(after).not.toContain('ftp://bad.example');
   });
 
   it('rejects non-https bits image URLs instead of treating them as local files', async () => {

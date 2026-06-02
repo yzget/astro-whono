@@ -18,6 +18,12 @@ import {
   type EditorTextSelection,
   type MarkdownTextEdit
 } from './editor-markdown-transforms';
+import {
+  findEditableImageBlockAtSelection,
+  type EditableImageBlock
+} from './editor-image-blocks';
+import type { EditableGalleryBlock } from './editor-gallery-blocks';
+import { getImageEditTooltipExtension } from './editor-image-edit-tooltip';
 import { getMarkdownCodeDecorationsExtension } from './editor-markdown-code-decorations';
 import { getMarkdownHighlightExtension } from './editor-markdown-highlight-extension';
 import type {
@@ -33,6 +39,8 @@ type Props = {
   lineNumbersEnabled?: boolean;
   onScrollElementChange?: (element: HTMLElement | null) => void;
   onOutlineJump?: (element: HTMLElement) => void;
+  onImageToolRequest?: (block: EditableImageBlock | null) => void;
+  onGalleryEditRequest?: (block: EditableGalleryBlock) => void;
   onShortcutTool?: (toolId: MarkdownToolId) => void;
 };
 
@@ -44,6 +52,8 @@ let {
   lineNumbersEnabled = false,
   onScrollElementChange,
   onOutlineJump,
+  onImageToolRequest,
+  onGalleryEditRequest,
   onShortcutTool
 }: Props = $props();
 
@@ -137,6 +147,16 @@ const applyMarkdownTool = (toolId: MarkdownToolId): boolean => {
 const applyToolbarCommand = (command: MarkdownToolbarCommand) => {
   if (disabled || !view) return;
 
+  if (command.kind === 'tool' && command.toolId === 'image') {
+    onImageToolRequest?.(
+      findEditableImageBlockAtSelection(
+        view.state.doc.toString(),
+        getEditorSelection(view)
+      )
+    );
+    return;
+  }
+
   dispatchMarkdownEdit(
     applyMarkdownToolbarCommandToText(
       view.state.doc.toString(),
@@ -169,6 +189,15 @@ const createEditorExtensions = (): Extension[] => [
   }),
   getMarkdownHighlightExtension(),
   getMarkdownCodeDecorationsExtension(),
+  getImageEditTooltipExtension({
+    isDisabled: () => disabled,
+    onEditImageBlock: (block) => {
+      onImageToolRequest?.(block);
+    },
+    onEditGalleryBlock: (block) => {
+      onGalleryEditRequest?.(block);
+    }
+  }),
   history(),
   EditorView.lineWrapping,
   lineNumbersCompartment.of(lineNumbersEnabled ? lineNumbers() : []),

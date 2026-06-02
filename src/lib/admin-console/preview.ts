@@ -7,15 +7,22 @@ import type { RehypeShikiOptions } from '@shikijs/rehype';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import type { Options as RehypeSanitizeOptions } from 'rehype-sanitize';
+import rehypeKatex from 'rehype-katex';
 import rehypeStringify from 'rehype-stringify';
 import remarkDirective from 'remark-directive';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import type { Element, Root } from 'hast';
+import {
+  markdownMathRawOptions,
+  rehypeProtectMarkdownMath,
+  rehypeRestoreMarkdownMathBoundary
+} from '../../plugins/rehype-markdown-math-boundary.mjs';
 import remarkCallout from '../../plugins/remark-callout.mjs';
 import { sanitizeSchema } from '../../plugins/sanitize-schema.mjs';
 import shikiToolbar from '../../plugins/shiki-toolbar.mjs';
@@ -170,14 +177,18 @@ const createPreviewProcessor = (sourceFilePath: string | null, source: string) =
     .use(remarkParse)
     // 后台预览是手写 pipeline，不继承 Astro Markdown 默认 GFM；显式接入以对齐公开文章渲染。
     .use(remarkGfm)
+    .use(remarkMath, { singleDollarTextMath: false })
     .use(remarkDirective)
     .use(remarkCallout)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(createPreviewOutlineAnchorPlugin(source))
+    .use(rehypeProtectMarkdownMath)
     .use(rehypeShiki, previewShikiOptions)
-    .use(rehypeRaw)
+    .use(rehypeRaw, markdownMathRawOptions)
+    .use(rehypeRestoreMarkdownMathBoundary)
     .use(createPreviewImageSrcPlugin(sourceFilePath))
     .use(rehypeSanitize, sanitizeSchema as unknown as RehypeSanitizeOptions)
+    .use(rehypeKatex)
     .use(rehypeStringify);
 
 const roundElapsedMs = (value: number): number => Math.round(value * 10) / 10;

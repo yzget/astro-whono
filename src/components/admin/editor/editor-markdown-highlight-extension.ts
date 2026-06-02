@@ -15,6 +15,26 @@ const adminMarkdownHighlightStyle = HighlightStyle.define([
     color: 'var(--admin-editor-markdown-marker-color)'
   },
   {
+    tag: tags.comment,
+    color: 'var(--admin-editor-markdown-comment-color)'
+  },
+  {
+    tag: tags.angleBracket,
+    color: 'var(--admin-editor-markdown-html-color)'
+  },
+  {
+    tag: tags.tagName,
+    color: 'var(--admin-editor-markdown-html-tag-color)'
+  },
+  {
+    tag: tags.attributeName,
+    color: 'var(--admin-editor-markdown-html-attribute-color)'
+  },
+  {
+    tag: tags.attributeValue,
+    color: 'var(--admin-editor-markdown-html-value-color)'
+  },
+  {
     tag: tags.heading,
     color: 'var(--admin-editor-markdown-heading-color)',
     fontWeight: '650'

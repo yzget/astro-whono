@@ -68,6 +68,24 @@ const assertNoDevAdminUiPreferenceAssets = () => {
   }
 };
 
+const EMOJI_PICKER_ARTIFACT_MARKERS = [
+  'emoji-picker-element',
+  'emoji-picker-element-data',
+  '<emoji-picker'
+];
+
+const assertNoEmojiPickerAssets = () => {
+  for (const filePath of findBuiltAstroAssets()) {
+    const content = readText(filePath);
+    for (const marker of EMOJI_PICKER_ARTIFACT_MARKERS) {
+      expect(
+        !content.includes(marker),
+        `${filePath} should not contain emoji picker artifacts (${marker})`
+      );
+    }
+  }
+};
+
 const PREV_LINK_PATTERN = /<a class="prev-next__link prev-next__link--prev"[^>]*rel="prev">/;
 const NEXT_LINK_PATTERN = /<a class="prev-next__link prev-next__link--next"[^>]*rel="next">/;
 
@@ -133,6 +151,8 @@ export const runProductionArtifactCheck = async (options = {}) => {
   ).filter(Boolean);
   const leakedEssayDetail = sitemapLocs.find((loc) => /^\/essay\/[^/]+\/$/.test(new URL(loc).pathname));
   expect(!leakedEssayDetail, `Essay compatibility redirect leaked into sitemap: ${leakedEssayDetail}`);
+
+  assertNoEmojiPickerAssets();
 
   const aboutHtml = readText('dist/about/index.html');
   expect(

@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { AdminEssayEditorValues } from '../../../lib/admin-console/content-shared';
+import AdminEditorIcon from './AdminEditorIcon.svelte';
 
 type AdminContentIssue = {
   path: string;
@@ -32,17 +33,41 @@ const getIssue = (path: string): string =>
       <p class="admin-content-editor__error" hidden={!getIssue('title')}>{getIssue('title')}</p>
     </label>
 
-    <label class="admin-field admin-content-editor__field" class:is-invalid={Boolean(getIssue('date'))}>
-      <span class="admin-field__label">日期</span>
-      <input class="admin-field__control" name="date" type="date" bind:value={value.date} {disabled} />
-      <p class="admin-content-editor__error" hidden={!getIssue('date')}>{getIssue('date')}</p>
-    </label>
+    <div class="admin-editor-frontmatter__datetime-grid">
+      <div class="admin-field admin-content-editor__field" class:is-invalid={Boolean(getIssue('date'))}>
+        <label class="admin-field__label" for="admin-essay-date">发布日期</label>
+        <input id="admin-essay-date" class="admin-field__control" name="date" type="date" bind:value={value.date} {disabled} />
+        <p class="admin-content-editor__error" hidden={!getIssue('date')}>{getIssue('date')}</p>
+      </div>
 
-    <label class="admin-field admin-content-editor__field" class:is-invalid={Boolean(getIssue('publishedAt'))}>
-      <span class="admin-field__label">发布时间</span>
-      <input class="admin-field__control" name="publishedAt" type="text" bind:value={value.publishedAt} placeholder="2024-11-23T18:00:00+08:00" {disabled} />
-      <p class="admin-content-editor__error" hidden={!getIssue('publishedAt')}>{getIssue('publishedAt')}</p>
-    </label>
+      <div class="admin-field admin-content-editor__field" class:is-invalid={Boolean(getIssue('publishedAt'))}>
+        <div class="admin-editor-frontmatter__label-row">
+          <label class="admin-field__label" for="admin-essay-published-at">详细时间（可选）</label>
+          <button
+            class="admin-editor-frontmatter__hint-trigger"
+            type="button"
+            aria-label="详细时间说明"
+            aria-describedby="admin-essay-published-at-tip"
+          >
+            <AdminEditorIcon name="info" size={13} strokeWidth={2} />
+          </button>
+          <span id="admin-essay-published-at-tip" class="admin-editor-frontmatter__tooltip" role="tooltip">
+            按 ISO 格式填写，需包含时区；留空时仅使用发布日期。
+          </span>
+        </div>
+        <input
+          id="admin-essay-published-at"
+          class="admin-field__control"
+          name="publishedAt"
+          type="text"
+          bind:value={value.publishedAt}
+          placeholder="2024-11-23T18:00:00+08:00"
+          aria-describedby="admin-essay-published-at-tip"
+          {disabled}
+        />
+        <p class="admin-content-editor__error" hidden={!getIssue('publishedAt')}>{getIssue('publishedAt')}</p>
+      </div>
+    </div>
 
     <label class="admin-field admin-content-editor__field" class:is-invalid={Boolean(getIssue('badge'))}>
       <span class="admin-field__label">badge</span>

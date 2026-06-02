@@ -1,6 +1,7 @@
 import type {
   MarkdownCalloutType,
   MarkdownHeadingLevel,
+  MarkdownInsertPlacement,
   MarkdownToolbarCommand,
   MarkdownToolId
 } from './markdown-tools';
@@ -8,20 +9,19 @@ import type {
 type MarkdownCommandDispatcherOptions = {
   isBusy: () => boolean;
   onCommand: (command: MarkdownToolbarCommand) => void;
-  onOpenImageInsert: () => void;
 };
 
 export type MarkdownCommandDispatcher = {
   applyCallout: (calloutType: MarkdownCalloutType) => void;
   applyHeading: (level: MarkdownHeadingLevel) => void;
   applyTool: (toolId: MarkdownToolId) => void;
-  insertText: (text: string) => void;
+  insertText: (text: string, placement?: MarkdownInsertPlacement) => void;
+  replaceText: (range: { from: number; to: number }, text: string, placement?: MarkdownInsertPlacement) => void;
 };
 
 export const createMarkdownCommandDispatcher = ({
   isBusy,
-  onCommand,
-  onOpenImageInsert
+  onCommand
 }: MarkdownCommandDispatcherOptions): MarkdownCommandDispatcher => {
   let commandId = 0;
 
@@ -41,15 +41,27 @@ export const createMarkdownCommandDispatcher = ({
     },
     applyTool: (toolId) => {
       if (isBusy()) return;
-      if (toolId === 'image') {
-        onOpenImageInsert();
-        return;
-      }
       onCommand({ id: nextCommandId(), kind: 'tool', toolId });
     },
-    insertText: (text) => {
+    insertText: (text, placement) => {
       if (isBusy()) return;
-      onCommand({ id: nextCommandId(), kind: 'insert', text });
+      onCommand({
+        id: nextCommandId(),
+        kind: 'insert',
+        text,
+        ...(placement ? { placement } : {})
+      });
+    },
+    replaceText: (range, text, placement) => {
+      if (isBusy()) return;
+      onCommand({
+        id: nextCommandId(),
+        kind: 'replace',
+        from: range.from,
+        to: range.to,
+        text,
+        ...(placement ? { placement } : {})
+      });
     }
   };
 };

@@ -19,8 +19,9 @@ body.admin-page--content-editor .admin-content-edit-page--essay {
 
 body.admin-page--content-editor .content {
   --admin-editor-page-padding-top: 62px;
-  --admin-editor-page-padding-bottom: 56px;
+  --admin-editor-page-padding-bottom: 0px;
 
+  padding-inline: 0;
   padding-block: var(--admin-editor-page-padding-top) var(--admin-editor-page-padding-bottom);
   min-height: 0;
   height: 100dvh;
@@ -29,12 +30,10 @@ body.admin-page--content-editor .content {
 
 :root[data-admin-sidebar='collapsed'] body.admin-page--content-editor {
   --admin-rail-block-start: 26px;
-  --admin-sidebar-divider-block-start: 26px;
 }
 
 :root[data-admin-sidebar='collapsed'] body.admin-page--content-editor .content {
   --admin-editor-page-padding-top: 28px;
-  --admin-editor-page-padding-bottom: 28px;
 }
 
 body.admin-page--content-editor {
@@ -48,6 +47,10 @@ body.admin-page--content-editor .shell {
   max-width: none;
   margin-inline: 0;
   overflow: hidden;
+}
+
+body.admin-page--content-editor .divider {
+  background: color-mix(in srgb, var(--border) 62%, transparent);
 }
 
 body.admin-page--content-editor .content__inner,
@@ -92,14 +95,9 @@ body.admin-page--content-editor .admin-editor-shell__actions {
   display: none;
 }
 
-@media (min-width: 1440px) {
-  body.admin-page--content-editor .content {
-    padding-inline: 32px;
-  }
-}
-
 .admin-content-edit-page--essay .admin-content-page-head {
   align-items: center;
+  padding-inline: 16px 12px;
   padding-bottom: 18px;
 }
 

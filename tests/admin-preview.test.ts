@@ -58,6 +58,68 @@ describe('admin preview api', () => {
     expect(result.html).toContain('<code class="language-ts">');
   });
 
+  it('keeps math fenced code as code instead of KaTeX', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+
+    const result = await renderAdminMarkdownPreview({
+      collection: 'essay',
+      source: ['```math', 'x + y', '```'].join('\n')
+    });
+
+    expect(result.html).toContain('class="code-block"');
+    expect(result.html).toContain('x + y');
+    expect(result.html).not.toContain('class="katex"');
+  });
+
+  it('does not treat raw HTML math classes as supported math syntax', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+
+    const result = await renderAdminMarkdownPreview({
+      collection: 'essay',
+      source: [
+        '<span class="math-inline">x + y</span>',
+        '<code class="language-math math-inline">a + b</code>',
+        '<pre><code class="language-math">c + d</code></pre>'
+      ].join('\n')
+    });
+
+    expect(result.html).not.toContain('class="katex"');
+    expect(result.html).toContain('x + y');
+    expect(result.html).toContain('a + b');
+    expect(result.html).toContain('c + d');
+    expect(result.html).not.toContain('math-inline');
+    expect(result.html).not.toContain('language-math');
+  });
+
+  it('renders double-dollar math as KaTeX without Shiki code wrappers', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+
+    const result = await renderAdminMarkdownPreview({
+      collection: 'essay',
+      source: ['Inline math $$x + y$$.', '', '$$', 'x^2 + y^2 = z^2', '$$'].join('\n')
+    });
+
+    expect(result.html).toContain('class="katex"');
+    expect(result.html).toContain('class="katex-display"');
+    expect(result.html).not.toContain('class="code-block"');
+    expect(result.html).not.toContain('class="code-toolbar"');
+    expect(result.html).not.toContain('language-text');
+    expect(result.html).not.toContain('shiki');
+  });
+
+  it('keeps single-dollar and ordinary dollar text outside math rendering', async () => {
+    const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
+
+    const result = await renderAdminMarkdownPreview({
+      collection: 'essay',
+      source: 'The price is $12 and inline single-dollar $x$ stays plain text.'
+    });
+
+    expect(result.html).not.toContain('class="katex"');
+    expect(result.html).toContain('$12');
+    expect(result.html).toContain('$x$');
+  });
+
   it('renders GFM syntax shown by the editor syntax examples', async () => {
     const { renderAdminMarkdownPreview } = await import('../src/lib/admin-console/preview');
 

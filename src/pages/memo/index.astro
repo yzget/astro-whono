@@ -6,6 +6,12 @@ import '../../styles/article.css';
 import '../../styles/memo.css';
 import { getEntry, render } from 'astro:content';
 import { getThemeSettings } from '../../lib/theme-settings';
+import { containsMarkdownMath } from '../../lib/markdown-math';
+import {
+  MARKDOWN_MATH_STYLESHEET_DATA_ATTR,
+  MARKDOWN_MATH_STYLESHEET_HREF,
+  MARKDOWN_MATH_STYLESHEET_ID
+} from '../../lib/markdown-math-styles';
 
 const prod = import.meta.env.PROD;
 const DEFAULT_MEMO_TITLE = '生活小记';
@@ -27,6 +33,8 @@ const {
 const { Content, headings } = await render(entry);
 const memoTitle = page.memo.title ?? entry.data.title ?? DEFAULT_MEMO_TITLE;
 const memoSubtitle = page.memo.subtitle ?? entry.data.subtitle ?? DEFAULT_MEMO_SUBTITLE;
+const hasMath = containsMarkdownMath(entry.body ?? '');
+const katexStylesheetAttrs = { [MARKDOWN_MATH_STYLESHEET_DATA_ATTR]: 'true' };
 
 // Build a grouped TOC: H2 as section titles, H3 as items.
 type TocItem = { text: string; slug: string };
@@ -53,6 +61,16 @@ for (const h of headings) {
   description="整理一些值得留存的片刻与回忆。"
   bodyClass="memo-page immersive-page"
 >
+  {hasMath ? (
+    <link
+      slot="head"
+      id={MARKDOWN_MATH_STYLESHEET_ID}
+      rel="stylesheet"
+      href={MARKDOWN_MATH_STYLESHEET_HREF}
+      {...katexStylesheetAttrs}
+    />
+  ) : null}
+
   <div class="page-header reader-exit-anchor">
     <h1 class="page-title">{memoTitle}</h1>
     {memoSubtitle ? <span class="page-subtitle">{memoSubtitle}</span> : null}

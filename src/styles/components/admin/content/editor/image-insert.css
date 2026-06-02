@@ -48,6 +48,97 @@
   gap: 12px;
 }
 
+.admin-editor-image-insert__section {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-editor-image-insert__display-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+}
+
+.admin-editor-image-insert__mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--admin-row-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 84%, var(--bg) 16%);
+}
+
+.admin-editor-image-insert__option-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--admin-row-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 84%, var(--bg) 16%);
+}
+
+.admin-editor-image-insert__mode-button,
+.admin-editor-image-insert__option-button {
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  background: transparent;
+  font: inherit;
+  font-size: var(--admin-text-xs);
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.admin-editor-image-insert__mode-button {
+  padding: 6px 10px;
+}
+
+.admin-editor-image-insert__option-button {
+  padding: 6px 8px;
+}
+
+.admin-editor-image-insert__mode-button:hover:not(:disabled),
+.admin-editor-image-insert__option-button:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--bg) 72%, var(--panel) 28%);
+}
+
+.admin-editor-image-insert__mode-button:focus-visible,
+.admin-editor-image-insert__option-button:focus-visible {
+  outline: none;
+  border-color: var(--admin-focus-border);
+  box-shadow: var(--admin-focus-shadow);
+}
+
+.admin-editor-image-insert__mode-button.is-active,
+.admin-editor-image-insert__option-button.is-active {
+  border-color: color-mix(in srgb, var(--admin-row-border) 88%, var(--text) 12%);
+  color: var(--text);
+  background: var(--bg);
+  box-shadow: 0 5px 14px color-mix(in srgb, #000 6%, transparent);
+}
+
+.admin-editor-image-insert__mode-button:disabled,
+.admin-editor-image-insert__option-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
 .admin-editor-image-insert__dropzone {
   --admin-editor-image-dropzone-surface:
     color-mix(in srgb, var(--panel) 86%, var(--admin-surface-soft, var(--panel)) 14%);
@@ -86,6 +177,7 @@
 
 .admin-editor-image-insert__dropzone:focus-visible {
   outline: none;
+  border-style: solid;
   border-color: var(--admin-focus-border);
   box-shadow: var(--admin-focus-shadow);
 }
@@ -95,7 +187,7 @@
   opacity: 0.7;
 }
 
-.admin-editor-image-insert__dropzone-icon {
+.admin-editor-image-insert__source-icon {
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
@@ -107,28 +199,44 @@
   background: color-mix(in srgb, var(--bg) 88%, var(--panel) 12%);
 }
 
-.admin-editor-image-insert__dropzone-copy {
+.admin-editor-image-insert__current-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--admin-row-border) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 86%, var(--bg) 14%);
+}
+
+.admin-editor-image-insert__source-copy {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.admin-editor-image-insert__dropzone-copy strong,
-.admin-editor-image-insert__dropzone-copy span {
+.admin-editor-image-insert__source-copy strong,
+.admin-editor-image-insert__source-copy span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.admin-editor-image-insert__dropzone-copy strong {
+.admin-editor-image-insert__source-copy strong {
   color: var(--text);
   font-size: var(--admin-text-sm);
   line-height: 1.35;
 }
 
-.admin-editor-image-insert__dropzone-copy span {
+.admin-editor-image-insert__source-copy span {
   color: var(--muted);
   font-size: var(--admin-text-xs);
   line-height: 1.45;
+}
+
+.admin-editor-image-insert__replace-button {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 .admin-editor-image-insert__preview {
@@ -168,4 +276,10 @@
   background: color-mix(in srgb, var(--admin-error-accent) 8%, var(--bg) 92%);
   font-size: var(--admin-text-sm);
   line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .admin-editor-image-insert__display-grid {
+    grid-template-columns: 1fr;
+  }
 }

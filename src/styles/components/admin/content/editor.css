@@ -8,6 +8,7 @@
 @import "./editor/shell.css";
 @import "./editor/frontmatter.css";
 @import "./editor/image-insert.css";
+@import "./editor/gallery-insert.css";
 @import "./editor/workspace.css";
 @import "./editor/toolbar.css";
 @import "./editor/side-panels.css";

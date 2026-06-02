@@ -2,7 +2,11 @@
 import type { AdminEssayEditorValues } from '../../../lib/admin-console/content-shared';
 import type { AdminContentIssue } from './essay-editor-client';
 import ArticleInfoDialog from './ArticleInfoDialog.svelte';
+import GalleryInsertDialog from './GalleryInsertDialog.svelte';
 import ImageInsertDialog from './ImageInsertDialog.svelte';
+import type { MarkdownInsertPlacement } from './markdown-tools';
+import type { ImageBlockDraft } from './image-insert-helpers';
+import type { GalleryBlockDraft } from './gallery-insert-helpers';
 
 type Props = {
   frontmatter: AdminEssayEditorValues;
@@ -14,13 +18,19 @@ type Props = {
   canSave: boolean;
   slugPlaceholder: string;
   imageInsertOpen: boolean;
+  galleryInsertOpen: boolean;
+  imageEditDraft?: ImageBlockDraft | null;
+  galleryEditDraft?: GalleryBlockDraft | null;
   imageUploadEndpoint: string;
   entryId: string;
   onFrontmatterClose: () => void;
   onFrontmatterReset: () => void;
   onFrontmatterSave: () => void | Promise<void>;
   onImageClose: () => void;
-  onImageInsert: (markdown: string) => void;
+  onImageInsert: (text: string, placement?: MarkdownInsertPlacement) => void;
+  onGalleryClose: () => void;
+  onGalleryInsert: (text: string, placement?: MarkdownInsertPlacement) => void;
+  onGalleryRemove?: () => void;
 };
 
 let {
@@ -33,13 +43,19 @@ let {
   canSave,
   slugPlaceholder,
   imageInsertOpen,
+  galleryInsertOpen,
+  imageEditDraft = null,
+  galleryEditDraft = null,
   imageUploadEndpoint,
   entryId,
   onFrontmatterClose,
   onFrontmatterReset,
   onFrontmatterSave,
   onImageClose,
-  onImageInsert
+  onImageInsert,
+  onGalleryClose,
+  onGalleryInsert,
+  onGalleryRemove
 }: Props = $props();
 
 let articleInfoDialog = $state<ArticleInfoDialog | null>(null);
@@ -66,9 +82,21 @@ export const captureReturnFocus = (trigger?: Element | null) => {
 
 <ImageInsertDialog
   open={imageInsertOpen}
+  editDraft={imageEditDraft}
   uploadEndpoint={imageUploadEndpoint}
   {entryId}
   {disabled}
   onClose={onImageClose}
   onInsert={onImageInsert}
+/>
+
+<GalleryInsertDialog
+  open={galleryInsertOpen}
+  editDraft={galleryEditDraft}
+  uploadEndpoint={imageUploadEndpoint}
+  {entryId}
+  {disabled}
+  onClose={onGalleryClose}
+  onInsert={onGalleryInsert}
+  onRemove={onGalleryRemove}
 />

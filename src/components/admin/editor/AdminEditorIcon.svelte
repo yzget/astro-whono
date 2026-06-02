@@ -2,6 +2,8 @@
 import Bold from '@lucide/svelte/icons/bold';
 import BookOpenText from '@lucide/svelte/icons/book-open-text';
 import Braces from '@lucide/svelte/icons/braces';
+import ArrowDown from '@lucide/svelte/icons/arrow-down';
+import ArrowUp from '@lucide/svelte/icons/arrow-up';
 import ArrowUpToLine from '@lucide/svelte/icons/arrow-up-to-line';
 import CircleCheck from '@lucide/svelte/icons/circle-check';
 import CodeXml from '@lucide/svelte/icons/code-xml';
@@ -11,10 +13,13 @@ import Ellipsis from '@lucide/svelte/icons/ellipsis';
 import Heading from '@lucide/svelte/icons/heading';
 import Image from '@lucide/svelte/icons/image';
 import ImagePlus from '@lucide/svelte/icons/image-plus';
+import Images from '@lucide/svelte/icons/images';
+import Info from '@lucide/svelte/icons/info';
 import Italic from '@lucide/svelte/icons/italic';
 import Link from '@lucide/svelte/icons/link';
 import List from '@lucide/svelte/icons/list';
 import ListCheck from '@lucide/svelte/icons/list-check';
+import ListCollapse from '@lucide/svelte/icons/list-collapse';
 import ListOrdered from '@lucide/svelte/icons/list-ordered';
 import Lock from '@lucide/svelte/icons/lock';
 import LockOpen from '@lucide/svelte/icons/lock-open';
@@ -23,12 +28,18 @@ import MessageSquareText from '@lucide/svelte/icons/message-square-text';
 import Minimize2 from '@lucide/svelte/icons/minimize-2';
 import MSquare from '@lucide/svelte/icons/m-square';
 import NotebookPen from '@lucide/svelte/icons/notebook-pen';
+import Minus from '@lucide/svelte/icons/minus';
+import Plus from '@lucide/svelte/icons/plus';
 import Quote from '@lucide/svelte/icons/quote';
 import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 import Rows2 from '@lucide/svelte/icons/rows-2';
+import SeparatorHorizontal from '@lucide/svelte/icons/separator-horizontal';
+import Sigma from '@lucide/svelte/icons/sigma';
 import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import SquareAsterisk from '@lucide/svelte/icons/square-asterisk';
 import SquareChartGantt from '@lucide/svelte/icons/square-chart-gantt';
+import SquareSigma from '@lucide/svelte/icons/square-sigma';
+import Smile from '@lucide/svelte/icons/smile';
 import Strikethrough from '@lucide/svelte/icons/strikethrough';
 import Table2 from '@lucide/svelte/icons/table-2';
 import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -41,6 +52,8 @@ import X from '@lucide/svelte/icons/x';
 
 const icons = {
   'arrow-up-to-line': ArrowUpToLine,
+  'arrow-down': ArrowDown,
+  'arrow-up': ArrowUp,
   bold: Bold,
   'book-open-text': BookOpenText,
   check: CircleCheck,
@@ -53,23 +66,32 @@ const icons = {
   heading: Heading,
   image: Image,
   'image-plus': ImagePlus,
+  images: Images,
+  info: Info,
   italic: Italic,
   link: Link,
   list: List,
+  'list-collapse': ListCollapse,
   lock: Lock,
   'lock-open': LockOpen,
   'maximize-2': Maximize2,
   'message-square-text': MessageSquareText,
   'minimize-2': Minimize2,
   'm-square': MSquare,
+  minus: Minus,
   'notebook-pen': NotebookPen,
   'ordered-list': ListOrdered,
+  plus: Plus,
   quote: Quote,
   'rotate-ccw': RotateCcw,
   'rows-2': Rows2,
+  'separator-horizontal': SeparatorHorizontal,
+  sigma: Sigma,
   'sliders-horizontal': SlidersHorizontal,
   'square-asterisk': SquareAsterisk,
   'square-chart-gantt': SquareChartGantt,
+  'square-sigma': SquareSigma,
+  smile: Smile,
   strikethrough: Strikethrough,
   table: Table2,
   'task-list': ListCheck,

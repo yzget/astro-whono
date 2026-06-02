@@ -1,5 +1,6 @@
 <script lang="ts">
 import AdminEditorIcon from './AdminEditorIcon.svelte';
+import EmojiPickerPopover from './EmojiPickerPopover.svelte';
 import type { EditorPaneMode, EditorViewMode } from './editor-shell-helpers';
 import {
   DEFAULT_MARKDOWN_HIGHLIGHT_THEME,
@@ -7,10 +8,22 @@ import {
   getMarkdownHighlightThemeLabel,
   type MarkdownHighlightTheme
 } from './editor-markdown-highlight';
-import type { MarkdownCalloutType, MarkdownHeadingLevel, MarkdownToolId } from './markdown-tools';
+import {
+  MARKDOWN_DETAILS_INSERT_TOOL,
+  MARKDOWN_MATH_INSERT_TOOLS,
+  MARKDOWN_MORE_SEPARATOR_INSERT_TOOL,
+  type MarkdownMathInsertTool
+} from './insert-tools';
+import type {
+  MarkdownCalloutType,
+  MarkdownHeadingLevel,
+  MarkdownInsertPlacement,
+  MarkdownToolId
+} from './markdown-tools';
 
 type LayoutIconName = 'columns-2' | 'rows-2' | 'undo-2';
 
+const toolbarIconSize = 17;
 const headingTool = { label: '标题', icon: 'heading' } as const;
 const calloutTool = { label: '提示块', icon: 'message-square-text' } as const;
 const headingLevelItems: readonly { level: MarkdownHeadingLevel; label: string; description: string }[] = [
@@ -25,23 +38,36 @@ const calloutItems = [
   { type: 'info' },
   { type: 'warning' }
 ] as const;
+const formulaTool = { label: '插入公式', icon: 'sigma' } as const;
+const emojiTool = { label: '表情', icon: 'smile' } as const;
+const insertTool = { label: '插入', icon: 'plus' } as const;
+const galleryTool = { label: '图片画廊', icon: 'images' } as const;
+const detailsTool = MARKDOWN_DETAILS_INSERT_TOOL;
+const moreSeparatorTool = MARKDOWN_MORE_SEPARATOR_INSERT_TOOL;
+const listTool = { label: '列表', icon: 'list' } as const;
 
-const markdownTools = [
+const markdownTextTools = [
   { id: 'bold', label: '加粗', icon: 'bold' },
   { id: 'italic', label: '斜体', icon: 'italic' },
-  { id: 'strikethrough', label: '删除线', icon: 'strikethrough' },
+  { id: 'strikethrough', label: '删除线', icon: 'strikethrough' }
+] as const;
+const markdownParagraphTools = [
+  { id: 'quote', label: '引用', icon: 'quote' }
+] as const;
+const markdownInlineMediaTools = [
   { id: 'link', label: '链接', icon: 'link' },
-  { id: 'image', label: '图片', icon: 'image' },
-  { id: 'quote', label: '引用', icon: 'quote' },
   { id: 'code', label: '行内代码', icon: 'code' },
+  { id: 'image', label: '图片', icon: 'image' }
+] as const;
+const markdownBlockTools = [
   { id: 'codeBlock', label: '代码块', icon: 'code-block' },
-  { id: 'list', label: '无序列表', icon: 'list' },
-  { id: 'orderedList', label: '有序列表', icon: 'ordered-list' },
-  { id: 'taskList', label: '任务列表', icon: 'task-list' },
   { id: 'table', label: '表格', icon: 'table' }
 ] as const;
-const markdownToolsBeforeCallout = markdownTools.slice(0, 6);
-const markdownToolsAfterCallout = markdownTools.slice(6);
+const markdownListTools = [
+  { id: 'list', label: '无序列表', icon: 'list' },
+  { id: 'orderedList', label: '有序列表', icon: 'ordered-list' },
+  { id: 'taskList', label: '任务列表', icon: 'task-list' }
+] as const;
 
 type Props = {
   busy?: boolean;
@@ -72,6 +98,8 @@ type Props = {
   onApplyTool: (toolId: MarkdownToolId) => void;
   onApplyHeading: (level: MarkdownHeadingLevel) => void;
   onApplyCallout: (calloutType: MarkdownCalloutType) => void;
+  onInsertText: (text: string, placement?: MarkdownInsertPlacement) => void;
+  onOpenGallery: () => void;
   onToggleOutline: () => void;
   onToggleSyntax: () => void;
   onToggleLineNumbers: () => void;
@@ -111,6 +139,8 @@ let {
   onApplyTool,
   onApplyHeading,
   onApplyCallout,
+  onInsertText,
+  onOpenGallery,
   onToggleOutline,
   onToggleSyntax,
   onToggleLineNumbers,
@@ -125,6 +155,16 @@ let headingMenuOpen = $state(false);
 let headingMenuEl = $state<HTMLDetailsElement | null>(null);
 let calloutMenuOpen = $state(false);
 let calloutMenuEl = $state<HTMLDetailsElement | null>(null);
+let formulaMenuOpen = $state(false);
+let formulaMenuEl = $state<HTMLDetailsElement | null>(null);
+let emojiMenuOpen = $state(false);
+let emojiButtonEl = $state<HTMLButtonElement | null>(null);
+let emojiPopoverAnchorEl = $state<HTMLElement | null>(null);
+let listMenuOpen = $state(false);
+let listMenuEl = $state<HTMLDetailsElement | null>(null);
+let insertMenuOpen = $state(false);
+let insertMenuEl = $state<HTMLDetailsElement | null>(null);
+let insertSummaryEl = $state<HTMLElement | null>(null);
 let displayMenuOpen = $state(false);
 let displayMenuEl = $state<HTMLDetailsElement | null>(null);
 
@@ -148,12 +188,44 @@ const closeCalloutMenu = () => {
   calloutMenuOpen = false;
 };
 
+const closeFormulaMenu = () => {
+  if (formulaMenuEl) formulaMenuEl.open = false;
+  formulaMenuOpen = false;
+};
+
+const closeEmojiMenu = () => {
+  emojiMenuOpen = false;
+  emojiPopoverAnchorEl = null;
+};
+
+const closeListMenu = () => {
+  if (listMenuEl) listMenuEl.open = false;
+  listMenuOpen = false;
+};
+
+const closeInsertMenu = () => {
+  if (insertMenuEl) insertMenuEl.open = false;
+  insertMenuOpen = false;
+};
+
 const syncHeadingMenuOpen = () => {
   headingMenuOpen = headingMenuEl?.open ?? false;
 };
 
 const syncCalloutMenuOpen = () => {
   calloutMenuOpen = calloutMenuEl?.open ?? false;
+};
+
+const syncFormulaMenuOpen = () => {
+  formulaMenuOpen = formulaMenuEl?.open ?? false;
+};
+
+const syncListMenuOpen = () => {
+  listMenuOpen = listMenuEl?.open ?? false;
+};
+
+const syncInsertMenuOpen = () => {
+  insertMenuOpen = insertMenuEl?.open ?? false;
 };
 
 const syncDisplayMenuOpen = () => {
@@ -174,6 +246,40 @@ const handleCalloutSummaryClick = (event: MouseEvent) => {
   event.stopPropagation();
 };
 
+const handleFormulaSummaryClick = (event: MouseEvent) => {
+  if (!busy) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+};
+
+const handleEmojiSummaryClick = (event: MouseEvent) => {
+  if (busy) {
+    return;
+  }
+
+  if (emojiMenuOpen) {
+    closeEmojiMenu();
+    return;
+  }
+
+  openEmojiMenu(event.currentTarget as HTMLElement);
+};
+
+const handleListSummaryClick = (event: MouseEvent) => {
+  if (!busy) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+};
+
+const handleInsertSummaryClick = (event: MouseEvent) => {
+  if (!busy) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+};
+
 const applyHeadingLevel = (level: MarkdownHeadingLevel) => {
   if (busy) return;
 
@@ -188,6 +294,57 @@ const applyCalloutType = (calloutType: MarkdownCalloutType) => {
   onApplyCallout(calloutType);
 };
 
+const applyMathTool = (toolId: MarkdownMathInsertTool['id']) => {
+  if (busy) return;
+
+  closeFormulaMenu();
+  closeInsertMenu();
+  onApplyTool(toolId);
+};
+
+const openEmojiMenu = (anchorEl: HTMLElement | null = emojiButtonEl) => {
+  if (busy) return;
+
+  emojiPopoverAnchorEl = anchorEl ?? emojiButtonEl;
+  emojiMenuOpen = true;
+};
+
+const openEmojiMenuFromInsertMenu = (event: MouseEvent) => {
+  const anchorEl = insertSummaryEl ?? (event.currentTarget as HTMLElement);
+  closeInsertMenu();
+  openEmojiMenu(anchorEl);
+};
+
+const openGalleryDialog = () => {
+  if (busy) return;
+
+  closeInsertMenu();
+  onOpenGallery();
+};
+
+const applyDetailsTool = () => {
+  if (busy) return;
+
+  closeFormulaMenu();
+  closeInsertMenu();
+  onApplyTool(detailsTool.id);
+};
+
+const applyMoreSeparatorTool = () => {
+  if (busy) return;
+
+  closeInsertMenu();
+  onInsertText(moreSeparatorTool.text, moreSeparatorTool.placement);
+};
+
+const applyListTool = (toolId: (typeof markdownListTools)[number]['id']) => {
+  if (busy) return;
+
+  closeListMenu();
+  closeInsertMenu();
+  onApplyTool(toolId);
+};
+
 const handleLayoutControlClick = () => {
   if (singleViewActive) {
     onReturnToBothView();
@@ -197,6 +354,12 @@ const handleLayoutControlClick = () => {
   onToggleLayout();
 };
 
+const handleEmojiInsert = (unicode: string) => {
+  if (busy) return;
+
+  onInsertText(unicode, 'inline');
+};
+
 $effect(() => {
   if (busy && headingMenuOpen) {
     closeHeadingMenu();
@@ -204,107 +367,407 @@ $effect(() => {
   if (busy && calloutMenuOpen) {
     closeCalloutMenu();
   }
+  if (busy && formulaMenuOpen) {
+    closeFormulaMenu();
+  }
+  if (busy && emojiMenuOpen) {
+    closeEmojiMenu();
+  }
+  if (busy && listMenuOpen) {
+    closeListMenu();
+  }
+  if (busy && insertMenuOpen) {
+    closeInsertMenu();
+  }
 });
 </script>
 
 <div class="admin-editor-shell__format-row">
   <div class="admin-editor-markdown-toolbar" role="toolbar" aria-label="Markdown 常用格式">
+    <div class="admin-editor-markdown-toolbar__group" role="group" aria-label="文本样式">
+      {#each markdownTextTools as tool}
+        <button
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          type="button"
+          data-tooltip={tool.label}
+          aria-label={tool.label}
+          disabled={busy}
+          onclick={() => onApplyTool(tool.id)}
+        >
+          <AdminEditorIcon name={tool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </button>
+      {/each}
+    </div>
+
+    <div class="admin-editor-markdown-toolbar__group" role="group" aria-label="段落结构">
+      <details
+        class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--heading"
+        class:is-open={headingMenuOpen}
+        bind:this={headingMenuEl}
+        ontoggle={syncHeadingMenuOpen}
+      >
+        <summary
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          data-tooltip={headingTool.label}
+          aria-label={headingTool.label}
+          aria-disabled={busy ? 'true' : undefined}
+          onclick={handleHeadingSummaryClick}
+        >
+          <AdminEditorIcon name={headingTool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </summary>
+
+        <div
+          class="admin-content-menu-panel admin-editor-heading-menu"
+          id="admin-editor-heading-menu"
+          aria-label="标题级别"
+        >
+          {#each headingLevelItems as item}
+            <button
+              class="admin-content-menu-item admin-editor-heading-menu__item"
+              type="button"
+              disabled={busy}
+              onclick={() => applyHeadingLevel(item.level)}
+            >
+              <span class="admin-editor-heading-menu__level">{item.label}</span>
+              <span class="admin-editor-heading-menu__text">{item.description}</span>
+            </button>
+          {/each}
+        </div>
+      </details>
+
+      <details
+        class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--list"
+        class:is-open={listMenuOpen}
+        bind:this={listMenuEl}
+        ontoggle={syncListMenuOpen}
+      >
+        <summary
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          data-tooltip={listTool.label}
+          aria-label={listTool.label}
+          aria-disabled={busy ? 'true' : undefined}
+          onclick={handleListSummaryClick}
+        >
+          <AdminEditorIcon name={listTool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </summary>
+
+        <div
+          class="admin-content-menu-panel admin-editor-list-menu"
+          id="admin-editor-list-menu"
+          aria-label="列表类型"
+        >
+          {#each markdownListTools as tool}
+            <button
+              class="admin-content-menu-item admin-editor-insert-menu__item"
+              type="button"
+              disabled={busy}
+              onclick={() => applyListTool(tool.id)}
+            >
+              <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+                <AdminEditorIcon name={tool.icon} size={15} strokeWidth={2} />
+              </span>
+              <span class="admin-editor-insert-menu__label">{tool.label}</span>
+            </button>
+          {/each}
+        </div>
+      </details>
+
+      {#each markdownParagraphTools as tool}
+        <button
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          type="button"
+          data-tooltip={tool.label}
+          aria-label={tool.label}
+          disabled={busy}
+          onclick={() => onApplyTool(tool.id)}
+        >
+          <AdminEditorIcon name={tool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </button>
+      {/each}
+    </div>
+
+    <div class="admin-editor-markdown-toolbar__group" role="group" aria-label="链接与媒体">
+      {#each markdownInlineMediaTools as tool}
+        <button
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          type="button"
+          data-tooltip={tool.label}
+          aria-label={tool.label}
+          disabled={busy}
+          onclick={() => onApplyTool(tool.id)}
+        >
+          <AdminEditorIcon name={tool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </button>
+      {/each}
+      <button
+        class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button admin-editor-markdown-toolbar__gallery-direct"
+        type="button"
+        data-tooltip={galleryTool.label}
+        aria-label={galleryTool.label}
+        disabled={busy}
+        onclick={openGalleryDialog}
+      >
+        <AdminEditorIcon name={galleryTool.icon} size={toolbarIconSize} strokeWidth={2} />
+      </button>
+    </div>
+
+    <div class="admin-editor-markdown-toolbar__group" role="group" aria-label="文章结构">
+      <button
+        class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button admin-editor-markdown-toolbar__more-direct"
+        type="button"
+        data-tooltip={moreSeparatorTool.label}
+        aria-label={moreSeparatorTool.label}
+        disabled={busy}
+        onclick={applyMoreSeparatorTool}
+      >
+        <AdminEditorIcon name={moreSeparatorTool.icon} size={toolbarIconSize} strokeWidth={2} />
+      </button>
+
+      <details
+        class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--callout"
+        class:is-open={calloutMenuOpen}
+        bind:this={calloutMenuEl}
+        ontoggle={syncCalloutMenuOpen}
+      >
+        <summary
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          data-tooltip={calloutTool.label}
+          aria-label={calloutTool.label}
+          aria-disabled={busy ? 'true' : undefined}
+          onclick={handleCalloutSummaryClick}
+        >
+          <AdminEditorIcon name={calloutTool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </summary>
+
+        <div
+          class="admin-content-menu-panel admin-editor-callout-menu"
+          id="admin-editor-callout-menu"
+          aria-label="提示块类型"
+        >
+          {#each calloutItems as item}
+            <button
+              class="admin-content-menu-item admin-editor-callout-menu__item"
+              type="button"
+              data-callout={item.type}
+              disabled={busy}
+              onclick={() => applyCalloutType(item.type)}
+            >
+              <span class="admin-editor-callout-menu__icon" aria-hidden="true"></span>
+              <span class="admin-editor-callout-menu__type">{item.type}</span>
+            </button>
+          {/each}
+        </div>
+      </details>
+
+      <button
+        class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button admin-editor-markdown-toolbar__details-direct"
+        type="button"
+        data-tooltip={detailsTool.label}
+        aria-label={detailsTool.label}
+        disabled={busy}
+        onclick={applyDetailsTool}
+      >
+        <AdminEditorIcon name={detailsTool.icon} size={toolbarIconSize} strokeWidth={2} />
+      </button>
+    </div>
+
+    <div class="admin-editor-markdown-toolbar__group" role="group" aria-label="内容块">
+      {#each markdownBlockTools as tool}
+        <button
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          type="button"
+          data-tooltip={tool.label}
+          aria-label={tool.label}
+          disabled={busy}
+          onclick={() => onApplyTool(tool.id)}
+        >
+          <AdminEditorIcon name={tool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </button>
+      {/each}
+
+      <div class="admin-editor-markdown-toolbar__insert-direct" role="group" aria-label="扩展插入">
+        <details
+          class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--formula"
+          class:is-open={formulaMenuOpen}
+          bind:this={formulaMenuEl}
+          ontoggle={syncFormulaMenuOpen}
+        >
+          <summary
+            class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+            data-tooltip={formulaTool.label}
+            aria-label={formulaTool.label}
+            aria-disabled={busy ? 'true' : undefined}
+            onclick={handleFormulaSummaryClick}
+          >
+            <AdminEditorIcon name={formulaTool.icon} size={toolbarIconSize} strokeWidth={2} />
+          </summary>
+
+          <div
+            class="admin-content-menu-panel admin-editor-formula-menu"
+            id="admin-editor-formula-menu"
+            aria-label="插入公式"
+          >
+            {#each MARKDOWN_MATH_INSERT_TOOLS as tool}
+              <button
+                class="admin-content-menu-item admin-editor-insert-menu__item"
+                type="button"
+                disabled={busy}
+                onclick={() => applyMathTool(tool.id)}
+              >
+                <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+                  <AdminEditorIcon name={tool.icon} size={15} strokeWidth={2} />
+                </span>
+                <span class="admin-editor-insert-menu__label">{tool.label}</span>
+              </button>
+            {/each}
+          </div>
+        </details>
+
+        <button
+          class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+          type="button"
+          data-tooltip={emojiTool.label}
+          aria-label={emojiTool.label}
+          aria-controls="admin-editor-emoji-picker-menu"
+          aria-expanded={emojiMenuOpen ? 'true' : 'false'}
+          aria-haspopup="dialog"
+          disabled={busy}
+          onclick={handleEmojiSummaryClick}
+          bind:this={emojiButtonEl}
+        >
+          <AdminEditorIcon name={emojiTool.icon} size={toolbarIconSize} strokeWidth={2} />
+        </button>
+
+        {#if emojiMenuOpen}
+          <EmojiPickerPopover
+            disabled={busy}
+            anchorElement={emojiPopoverAnchorEl ?? emojiButtonEl}
+            fallbackFocusElements={[emojiButtonEl, insertSummaryEl]}
+            onClose={closeEmojiMenu}
+            onInsert={handleEmojiInsert}
+          />
+        {/if}
+      </div>
+    </div>
+
     <details
-      class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--heading"
-      class:is-open={headingMenuOpen}
-      bind:this={headingMenuEl}
-      ontoggle={syncHeadingMenuOpen}
+      class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--insert"
+      class:is-open={insertMenuOpen}
+      bind:this={insertMenuEl}
+      ontoggle={syncInsertMenuOpen}
     >
       <summary
         class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
-        data-tooltip={headingTool.label}
-        aria-label={headingTool.label}
+        data-tooltip={insertTool.label}
+        aria-label={insertTool.label}
         aria-disabled={busy ? 'true' : undefined}
-        onclick={handleHeadingSummaryClick}
+        onclick={handleInsertSummaryClick}
+        bind:this={insertSummaryEl}
       >
-        <AdminEditorIcon name={headingTool.icon} size={16} strokeWidth={2} />
+        <AdminEditorIcon name={insertTool.icon} size={toolbarIconSize} strokeWidth={2} />
       </summary>
 
       <div
-        class="admin-content-menu-panel admin-editor-heading-menu"
-        id="admin-editor-heading-menu"
-        aria-label="标题级别"
+        class="admin-content-menu-panel admin-editor-insert-menu"
+        id="admin-editor-insert-menu"
+        aria-label="插入内容"
       >
-        {#each headingLevelItems as item}
+        <div class="admin-editor-insert-menu__group" role="group" aria-label="媒体">
+          <span class="admin-editor-insert-menu__group-label">媒体</span>
           <button
-            class="admin-content-menu-item admin-editor-heading-menu__item"
+            class="admin-content-menu-item admin-editor-insert-menu__item"
             type="button"
             disabled={busy}
-            onclick={() => applyHeadingLevel(item.level)}
+            onclick={openGalleryDialog}
           >
-            <span class="admin-editor-heading-menu__level">{item.label}</span>
-            <span class="admin-editor-heading-menu__text">{item.description}</span>
+            <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+              <AdminEditorIcon name={galleryTool.icon} size={15} strokeWidth={2} />
+            </span>
+            <span class="admin-editor-insert-menu__label">{galleryTool.label}</span>
           </button>
-        {/each}
-      </div>
-    </details>
+        </div>
 
-    {#each markdownToolsBeforeCallout as tool}
-      <button
-        class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
-        type="button"
-        data-tooltip={tool.label}
-        aria-label={tool.label}
-        disabled={busy}
-        onclick={() => onApplyTool(tool.id)}
-      >
-        <AdminEditorIcon name={tool.icon} size={16} strokeWidth={2} />
-      </button>
-    {/each}
-
-    <details
-      class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--callout"
-      class:is-open={calloutMenuOpen}
-      bind:this={calloutMenuEl}
-      ontoggle={syncCalloutMenuOpen}
-    >
-      <summary
-        class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
-        data-tooltip={calloutTool.label}
-        aria-label={calloutTool.label}
-        aria-disabled={busy ? 'true' : undefined}
-        onclick={handleCalloutSummaryClick}
-      >
-        <AdminEditorIcon name={calloutTool.icon} size={16} strokeWidth={2} />
-      </summary>
-
-      <div
-        class="admin-content-menu-panel admin-editor-callout-menu"
-        id="admin-editor-callout-menu"
-        aria-label="提示块类型"
-      >
-        {#each calloutItems as item}
+        <div class="admin-editor-insert-menu__group" role="group" aria-label="文章结构">
+          <span class="admin-editor-insert-menu__group-label">文章结构</span>
           <button
-            class="admin-content-menu-item admin-editor-callout-menu__item"
+            class="admin-content-menu-item admin-editor-insert-menu__item"
             type="button"
-            data-callout={item.type}
             disabled={busy}
-            onclick={() => applyCalloutType(item.type)}
+            onclick={applyMoreSeparatorTool}
           >
-            <span class="admin-editor-callout-menu__icon" aria-hidden="true"></span>
-            <span class="admin-editor-callout-menu__type">{item.type}</span>
+            <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+              <AdminEditorIcon name={moreSeparatorTool.icon} size={15} strokeWidth={2} />
+            </span>
+            <span class="admin-editor-insert-menu__label">{moreSeparatorTool.label}</span>
           </button>
-        {/each}
+        </div>
+
+        <div class="admin-editor-insert-menu__group" role="group" aria-label="内容块">
+          <span class="admin-editor-insert-menu__group-label">内容块</span>
+          <button
+            class="admin-content-menu-item admin-editor-insert-menu__item"
+            type="button"
+            disabled={busy}
+            onclick={applyDetailsTool}
+          >
+            <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+              <AdminEditorIcon name={detailsTool.icon} size={15} strokeWidth={2} />
+            </span>
+            <span class="admin-editor-insert-menu__label">{detailsTool.label}</span>
+          </button>
+        </div>
+
+        <div class="admin-editor-insert-menu__group" role="group" aria-label="公式">
+          <span class="admin-editor-insert-menu__group-label">公式</span>
+          {#each MARKDOWN_MATH_INSERT_TOOLS as tool}
+            <button
+              class="admin-content-menu-item admin-editor-insert-menu__item"
+              type="button"
+              disabled={busy}
+              onclick={() => applyMathTool(tool.id)}
+            >
+              <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+                <AdminEditorIcon name={tool.icon} size={15} strokeWidth={2} />
+              </span>
+              <span class="admin-editor-insert-menu__label">{tool.label}</span>
+            </button>
+          {/each}
+        </div>
+
+        <div class="admin-editor-insert-menu__group" role="group" aria-label="列表">
+          <span class="admin-editor-insert-menu__group-label">列表</span>
+          {#each markdownListTools as tool}
+            <button
+              class="admin-content-menu-item admin-editor-insert-menu__item"
+              type="button"
+              disabled={busy}
+              onclick={() => applyListTool(tool.id)}
+            >
+              <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+                <AdminEditorIcon name={tool.icon} size={15} strokeWidth={2} />
+              </span>
+              <span class="admin-editor-insert-menu__label">{tool.label}</span>
+            </button>
+          {/each}
+        </div>
+
+        <div class="admin-editor-insert-menu__group" role="group" aria-label="表情">
+          <span class="admin-editor-insert-menu__group-label">表情</span>
+          <button
+            class="admin-content-menu-item admin-editor-insert-menu__item"
+            type="button"
+            disabled={busy}
+            onclick={openEmojiMenuFromInsertMenu}
+          >
+            <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+              <AdminEditorIcon name={emojiTool.icon} size={15} strokeWidth={2} />
+            </span>
+            <span class="admin-editor-insert-menu__label">{emojiTool.label}</span>
+          </button>
+        </div>
+
       </div>
     </details>
-
-    {#each markdownToolsAfterCallout as tool}
-      <button
-        class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
-        type="button"
-        data-tooltip={tool.label}
-        aria-label={tool.label}
-        disabled={busy}
-        onclick={() => onApplyTool(tool.id)}
-      >
-        <AdminEditorIcon name={tool.icon} size={16} strokeWidth={2} />
-      </button>
-    {/each}
   </div>
 
   <div class="admin-editor-shell__layout-controls" aria-label="编辑器显示、目录、布局与视图">
@@ -316,7 +779,7 @@ $effect(() => {
       aria-pressed={layoutControlPressed}
       onclick={handleLayoutControlClick}
     >
-      <AdminEditorIcon name={layoutControlIcon} size={16} strokeWidth={2} />
+      <AdminEditorIcon name={layoutControlIcon} size={toolbarIconSize} strokeWidth={2} />
     </button>
     <details
       class="admin-editor-markdown-toolbar__menu admin-editor-display-menu"
@@ -331,7 +794,7 @@ $effect(() => {
         aria-expanded={displayMenuOpen ? 'true' : 'false'}
         aria-pressed={displayControlPressed}
       >
-        <AdminEditorIcon name="m-square" size={16} strokeWidth={2} />
+        <AdminEditorIcon name="m-square" size={toolbarIconSize} strokeWidth={2} />
       </summary>
 
       <div
@@ -401,7 +864,7 @@ $effect(() => {
         aria-pressed={effectiveViewMode === 'edit' ? 'true' : 'false'}
         onclick={() => onToggleView('edit')}
       >
-        <AdminEditorIcon name="notebook-pen" size={16} strokeWidth={2} />
+        <AdminEditorIcon name="notebook-pen" size={toolbarIconSize} strokeWidth={2} />
       </button>
       <button
         class="admin-editor-markdown-toolbar__button admin-editor-view-toggle"
@@ -411,7 +874,7 @@ $effect(() => {
         aria-pressed={effectiveViewMode === 'preview' ? 'true' : 'false'}
         onclick={() => onToggleView('preview')}
       >
-        <AdminEditorIcon name="book-open-text" size={16} strokeWidth={2} />
+        <AdminEditorIcon name="book-open-text" size={toolbarIconSize} strokeWidth={2} />
       </button>
     {/if}
     <button
@@ -425,7 +888,7 @@ $effect(() => {
       disabled={outlineControlDisabled}
       onclick={onToggleOutline}
     >
-      <AdminEditorIcon name="square-chart-gantt" size={16} strokeWidth={2} />
+      <AdminEditorIcon name="square-chart-gantt" size={toolbarIconSize} strokeWidth={2} />
     </button>
     <button
       class="admin-editor-markdown-toolbar__button admin-editor-syntax-toggle"
@@ -438,7 +901,7 @@ $effect(() => {
       disabled={syntaxControlDisabled}
       onclick={onToggleSyntax}
     >
-      <AdminEditorIcon name="square-asterisk" size={16} strokeWidth={2} />
+      <AdminEditorIcon name="square-asterisk" size={toolbarIconSize} strokeWidth={2} />
     </button>
   </div>
 </div>

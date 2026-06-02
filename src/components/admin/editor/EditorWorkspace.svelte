@@ -17,6 +17,8 @@ import type {
   MarkdownToolbarCommand,
   MarkdownToolId
 } from './markdown-tools';
+import type { EditableImageBlock } from './editor-image-blocks';
+import type { EditableGalleryBlock } from './editor-gallery-blocks';
 import type { MarkdownHighlightTheme } from './editor-markdown-highlight';
 import BodyEditor from './BodyEditor.svelte';
 import EditorSidePanels from './EditorSidePanels.svelte';
@@ -54,6 +56,8 @@ type Props = {
   essayOutlineListItems: readonly EditorOutlineEssayListItem[];
   onBodyScrollElementChange: (element: HTMLElement | null) => void;
   onBodyOutlineJump: (element: HTMLElement) => void;
+  onImageToolRequest: (block: EditableImageBlock | null) => void;
+  onGalleryEditRequest: (block: EditableGalleryBlock) => void;
   onPreviewScrollElementChange: (element: HTMLElement | null) => void;
   onShortcutTool: (toolId: MarkdownToolId) => void;
   onToggleScrollSync: () => void;
@@ -94,6 +98,8 @@ let {
   essayOutlineListItems,
   onBodyScrollElementChange,
   onBodyOutlineJump,
+  onImageToolRequest,
+  onGalleryEditRequest,
   onPreviewScrollElementChange,
   onShortcutTool,
   onToggleScrollSync,
@@ -120,6 +126,8 @@ let {
         {lineNumbersEnabled}
         onScrollElementChange={onBodyScrollElementChange}
         onOutlineJump={onBodyOutlineJump}
+        {onImageToolRequest}
+        {onGalleryEditRequest}
         onShortcutTool={onShortcutTool}
       />
     </div>

@@ -126,11 +126,6 @@
   line-height: 0;
 }
 
-.admin-editor-shell__preview-detail:last-of-type:not(:first-of-type) {
-  --admin-editor-preview-detail-panel-start: auto;
-  --admin-editor-preview-detail-panel-end: 0;
-}
-
 .admin-editor-shell__preview-detail-trigger {
   display: inline-flex;
   align-items: center;

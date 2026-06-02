@@ -4,6 +4,11 @@ import {
   type MarkdownToolbarCommand,
   type MarkdownToolId
 } from './markdown-tools';
+import {
+  MARKDOWN_DETAILS_BODY_PLACEHOLDER,
+  MARKDOWN_DETAILS_SUMMARY_PLACEHOLDER,
+  buildMarkdownDetailsText
+} from './insert-tools';
 
 export type EditorTextSelection = {
   from: number;
@@ -196,6 +201,79 @@ export const insertMarkdownText = (
   });
 };
 
+const getMarkdownBlockLead = (before: string): string => {
+  if (before.length === 0 || before.endsWith('\n\n')) return '';
+  return before.endsWith('\n') ? '\n' : '\n\n';
+};
+
+const getMarkdownBlockTrail = (after: string): string => {
+  if (after.length === 0) return '\n';
+  if (after.startsWith('\n\n')) return '';
+  return after.startsWith('\n') ? '\n' : '\n\n';
+};
+
+const trimMarkdownBoundaryNewlines = (value: string): string =>
+  value.replace(/^\n+|\n+$/g, '');
+
+export const insertMarkdownBlock = (
+  value: string,
+  selection: EditorTextSelection,
+  text: string
+): MarkdownTextEdit => {
+  const boundedSelection = getBoundedSelection(value, selection);
+  const block = normalizeMarkdownInsert(text).trim();
+  if (!block) return createNoopEdit(value, boundedSelection);
+
+  const before = value.slice(0, boundedSelection.from);
+  const after = value.slice(boundedSelection.to);
+  const lead = getMarkdownBlockLead(before);
+  const trail = getMarkdownBlockTrail(after);
+  const insert = `${lead}${block}${trail}`;
+  const cursor = boundedSelection.from + insert.length;
+
+  return replaceRange(boundedSelection.from, boundedSelection.to, insert, {
+    from: cursor,
+    to: cursor
+  });
+};
+
+const insertMarkdownDetailsBlock = (
+  value: string,
+  selection: EditorTextSelection
+): MarkdownTextEdit => {
+  const boundedSelection = getBoundedSelection(value, selection);
+  const selected = boundedSelection.from === boundedSelection.to
+    ? MARKDOWN_DETAILS_BODY_PLACEHOLDER
+    : trimMarkdownBoundaryNewlines(
+        normalizeMarkdownInsert(value.slice(boundedSelection.from, boundedSelection.to))
+      );
+  const block = buildMarkdownDetailsText(selected || MARKDOWN_DETAILS_BODY_PLACEHOLDER);
+  const before = value.slice(0, boundedSelection.from);
+  const after = value.slice(boundedSelection.to);
+  const lead = getMarkdownBlockLead(before);
+  const trail = getMarkdownBlockTrail(after);
+  const insert = `${lead}${block}${trail}`;
+  const summaryOffset = insert.indexOf(MARKDOWN_DETAILS_SUMMARY_PLACEHOLDER);
+  const summaryStart = boundedSelection.from + summaryOffset;
+
+  return replaceRange(boundedSelection.from, boundedSelection.to, insert, {
+    from: summaryStart,
+    to: summaryStart + MARKDOWN_DETAILS_SUMMARY_PLACEHOLDER.length
+  });
+};
+
+export const replaceMarkdownText = (
+  value: string,
+  range: EditorTextSelection,
+  text: string,
+  placement?: 'inline' | 'block'
+): MarkdownTextEdit => {
+  if (placement === 'block') {
+    return insertMarkdownBlock(value, range, text);
+  }
+  return insertMarkdownText(value, range, text);
+};
+
 export const applyMarkdownToolToText = (
   value: string,
   selection: EditorTextSelection,
@@ -218,6 +296,12 @@ export const applyMarkdownToolToText = (
       return createNoopEdit(value, selection);
     case 'codeBlock':
       return wrapBlockSelection(value, selection, '```text\n', '\n```', 'code');
+    case 'inlineMath':
+      return wrapSelection(value, selection, '$$', '$$', 'x');
+    case 'blockMath':
+      return wrapBlockSelection(value, selection, '$$\n', '\n$$', 'x');
+    case 'details':
+      return insertMarkdownDetailsBlock(value, selection);
     case 'list':
       return toggleLinePrefix(value, selection, '- ');
     case 'orderedList':
@@ -234,7 +318,18 @@ export const applyMarkdownToolbarCommandToText = (
   selection: EditorTextSelection,
   command: MarkdownToolbarCommand
 ): MarkdownTextEdit => {
+  if (command.kind === 'replace') {
+    return replaceMarkdownText(
+      value,
+      { from: command.from, to: command.to },
+      command.text,
+      command.placement
+    );
+  }
   if (command.kind === 'insert') {
+    if (command.placement === 'block') {
+      return insertMarkdownBlock(value, selection, command.text);
+    }
     return insertMarkdownText(value, selection, command.text);
   }
   if (command.kind === 'heading') {

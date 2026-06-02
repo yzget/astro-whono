@@ -11,7 +11,11 @@ export type MarkdownSyntaxIcon =
   | 'ordered-list'
   | 'task-list'
   | 'table'
-  | 'message-square-text';
+  | 'message-square-text'
+  | 'sigma'
+  | 'square-sigma'
+  | 'smile'
+  | 'minus';
 
 export type MarkdownSyntaxExample = {
   label: string;
@@ -36,13 +40,16 @@ export const MARKDOWN_SYNTAX_EXAMPLES: readonly MarkdownSyntaxExample[] = [
   { label: '图片', icon: 'image', syntax: '![alt](url "图片描述")' },
   { label: '引用', icon: 'quote', syntax: '> 引用文本' },
   { label: '提示块', icon: 'message-square-text', syntax: ':::note[标题]' },
+  { label: '行内公式', icon: 'sigma', syntax: '$$x$$' },
+  { label: '块级公式', icon: 'square-sigma', syntax: '$$\nx\n$$' },
+  { label: '表情', icon: 'smile', syntax: '🙂' },
   { label: '代码', icon: 'code', syntax: '`代码`' },
   { label: '代码块', icon: 'code-block', syntax: '```语言' },
   { label: '无序列表', icon: 'list', syntax: '- 项目' },
   { label: '有序列表', icon: 'ordered-list', syntax: '1. 项目' },
   { label: '任务列表', icon: 'task-list', syntax: '- [ ] 待办事项' },
   { label: '表格', icon: 'table', syntax: '| 标题 | 标题 |' },
-  { label: '分割线', marker: '---', syntax: '---' }
+  { label: '分割线', icon: 'minus', syntax: '---' }
 ] as const;
 
 export const MARKDOWN_SHORTCUT_EXAMPLES: readonly MarkdownShortcutExample[] = [

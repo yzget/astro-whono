@@ -8,11 +8,14 @@ The format is based on Keep a Changelog, and this project aims to follow Semanti
 ## [Unreleased]
 
 ### Added
-- Content Console 的文章列表更多菜单新增单篇 Markdown/MDX 源文件导出，开发环境下可直接下载当前条目的源文件。
-- Content Console 新增 essay / bits 条目删除功能；删除时源文件会移入 `.trash/content/`，便于误删恢复。
+- 新增本地文章管理与写作 Content Console，可在开发环境中浏览、编辑、导出和删除文章。
+- 文章编辑器引入 CodeMirror 编辑区，内置5种语法高亮主题，提升长文编辑体验。
+- 文章编辑器支持编辑 / 预览布局切换、目录与语法侧栏、编辑器语法高亮、行号选项，以及常用 Markdown、数学公式、emoji、图片与画廊写作辅助。
+- 本地后台新增侧栏收起、窄窗口 rail 导航和界面偏好，便于在桌面与窄桌面窗口中释放工作区空间。
 
 ### Changed
-- Content Console 列表数据源改为 DEV 源文件索引，并将 bits 公开分页与锚点规则抽离到共享 helper，避免后台列表依赖 Astro dev content store 的瞬时同步状态。
+- 优化本地后台在窄桌面窗口下的布局表现，减少横向滚动、控件遮挡和工作区挤压
+- Content Console 改为直接基于源文件展示内容列表，提升开发环境中新建、保存和删除文章后的刷新稳定性。
 
 ### Fixed
 - 修复后台图片预览在遇到无效地址时仍可能尝试加载图片的问题，地址不合法时会隐藏预览并清空图片源。

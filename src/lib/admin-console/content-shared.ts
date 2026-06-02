@@ -22,6 +22,7 @@ import {
   type FrontmatterPatch,
   splitMarkdownFrontmatter
 } from './frontmatter';
+import { findMissingEssayLocalImageReferences } from './essay-image-references';
 import type {
   AdminContentCollectionKey
 } from './content-collections';
@@ -196,6 +197,9 @@ type AdminWritePlan = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasOwn = (value: Record<string, unknown>, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(value, key);
 
 const normalizeOptionalText = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
@@ -895,22 +899,140 @@ const buildBitsFrontmatterFromValues = (
   };
 };
 
-const buildEssayCurrentFrontmatter = (state: AdminContentSourceState): AdminEssayFrontmatter => {
-  const values = toEssayEditorValues(state);
-  const result = buildEssayFrontmatterFromValues(values);
-  if (!result.frontmatter) {
-    throw new Error(`Current essay frontmatter is invalid: ${state.relativePath}`);
-  }
-  return result.frontmatter;
+const getCurrentTextValue = (
+  frontmatter: Record<string, unknown>,
+  field: string,
+  fallback: unknown
+): unknown => {
+  if (!hasOwn(frontmatter, field)) return fallback;
+  const value = frontmatter[field];
+  return typeof value === 'string' ? value.trim() : value;
 };
 
-const buildBitsCurrentFrontmatter = (state: AdminContentSourceState): AdminBitsFrontmatter => {
-  const values = toBitsEditorValues(state);
-  const result = buildBitsFrontmatterFromValues(values);
-  if (!result.frontmatter) {
-    throw new Error(`Current bits frontmatter is invalid: ${state.relativePath}`);
+const getCurrentOptionalTextValue = (
+  frontmatter: Record<string, unknown>,
+  field: string
+): unknown => {
+  const value = getCurrentTextValue(frontmatter, field, undefined);
+  return typeof value === 'string' && value.length === 0 ? undefined : value;
+};
+
+const getCurrentBooleanValue = (
+  frontmatter: Record<string, unknown>,
+  field: string,
+  fallback: boolean
+): unknown => {
+  if (!hasOwn(frontmatter, field)) return fallback;
+  const value = frontmatter[field];
+  return typeof value === 'boolean' ? value : value;
+};
+
+const getCurrentStringArrayValue = (
+  frontmatter: Record<string, unknown>,
+  field: string,
+  fallback: string[]
+): unknown => {
+  if (!hasOwn(frontmatter, field)) return fallback;
+  const value = frontmatter[field];
+  if (!Array.isArray(value)) return value;
+  return value.every((item) => typeof item === 'string')
+    ? value.map((item) => item.trim()).filter(Boolean)
+    : value;
+};
+
+type AdminEssayCurrentFrontmatter = {
+  title: unknown;
+  description: unknown;
+  date: unknown;
+  publishedAt: unknown;
+  preservedPublishedAt?: string;
+  tags: unknown;
+  draft: unknown;
+  archive: unknown;
+  slug: unknown;
+  cover: unknown;
+  badge: unknown;
+};
+
+type AdminBitsCurrentFrontmatter = {
+  title: unknown;
+  description: unknown;
+  date: unknown;
+  tags: unknown;
+  draft: unknown;
+  author: unknown;
+  images: unknown;
+};
+
+const buildEssayCurrentFrontmatter = (state: AdminContentSourceState): AdminEssayCurrentFrontmatter => {
+  const frontmatter = state.rawFrontmatter;
+  const currentDate = getCurrentTextValue(frontmatter, 'date', '');
+  const dateResult = typeof currentDate === 'string' ? parseEssayDateInput(currentDate) : null;
+  const currentPublishedAt = getCurrentOptionalTextValue(frontmatter, 'publishedAt');
+  const preservedPublishedAt = typeof currentPublishedAt === 'string'
+    ? (parseEssayPublishedAtInput(currentPublishedAt) ? currentPublishedAt : undefined)
+    : dateResult?.publishedAtText;
+
+  return {
+    title: getCurrentTextValue(frontmatter, 'title', ''),
+    description: getCurrentOptionalTextValue(frontmatter, 'description'),
+    date: currentDate,
+    publishedAt: currentPublishedAt,
+    ...(preservedPublishedAt ? { preservedPublishedAt } : {}),
+    tags: getCurrentStringArrayValue(frontmatter, 'tags', []),
+    draft: getCurrentBooleanValue(frontmatter, 'draft', false),
+    archive: getCurrentBooleanValue(frontmatter, 'archive', true),
+    slug: getCurrentOptionalTextValue(frontmatter, 'slug'),
+    cover: getCurrentOptionalTextValue(frontmatter, 'cover'),
+    badge: getCurrentOptionalTextValue(frontmatter, 'badge')
+  };
+};
+
+const getCurrentBitsAuthorValue = (frontmatter: Record<string, unknown>): unknown => {
+  if (!hasOwn(frontmatter, 'author')) return undefined;
+
+  const author = frontmatter.author;
+  if (!isRecord(author)) return author;
+
+  const name = getCurrentOptionalTextValue(author, 'name');
+  const rawAvatar = getCurrentOptionalTextValue(author, 'avatar');
+  if ((name !== undefined && typeof name !== 'string') || (rawAvatar !== undefined && typeof rawAvatar !== 'string')) {
+    return author;
   }
-  return result.frontmatter;
+
+  const avatar = rawAvatar ? normalizeBitsAvatarPath(rawAvatar) : '';
+  if (rawAvatar && avatar === undefined) return author;
+
+  return name || avatar
+    ? {
+        ...(name ? { name } : {}),
+        ...(avatar ? { avatar } : {})
+      }
+    : undefined;
+};
+
+const getCurrentBitsImagesValue = (frontmatter: Record<string, unknown>): unknown => {
+  if (!hasOwn(frontmatter, 'images')) return undefined;
+
+  const images = frontmatter.images;
+  if (!Array.isArray(images)) return images;
+
+  const parsed = parseBitsImages(JSON.stringify(images));
+  if (parsed.issues.length > 0) return images;
+  return parsed.images && parsed.images.length > 0 ? parsed.images : undefined;
+};
+
+const buildBitsCurrentFrontmatter = (state: AdminContentSourceState): AdminBitsCurrentFrontmatter => {
+  const frontmatter = state.rawFrontmatter;
+  return {
+    title: getCurrentOptionalTextValue(frontmatter, 'title'),
+    description: getCurrentOptionalTextValue(frontmatter, 'description'),
+    date: getCurrentTextValue(frontmatter, 'date', ''),
+    tags: getCurrentStringArrayValue(frontmatter, 'tags', []),
+    draft: getCurrentBooleanValue(frontmatter, 'draft', false),
+    author: getCurrentBitsAuthorValue(frontmatter),
+    images: getCurrentBitsImagesValue(frontmatter)
+  };
 };
 
 const isEqualJsonValue = (left: unknown, right: unknown): boolean =>
@@ -927,8 +1049,8 @@ const buildEssayWritePlan = async (
   const current = buildEssayCurrentFrontmatter(state);
   const shouldPreservePublishedAt = options.publishedAtInputMode === 'missing';
   const next = buildEssayFrontmatterFromValues(values, {
-    ...(shouldPreservePublishedAt && current.publishedAt
-      ? { preservedPublishedAt: current.publishedAt }
+    ...(shouldPreservePublishedAt && current.preservedPublishedAt
+      ? { preservedPublishedAt: current.preservedPublishedAt }
       : {})
   });
   if (!next.frontmatter) {
@@ -940,8 +1062,22 @@ const buildEssayWritePlan = async (
     return { issues: slugIssues, changedFields: [], patches: [] };
   }
 
-  const currentDate = getDateString(state.rawFrontmatter, 'date', current.date);
-  const currentPublishedAt = normalizeOptionalText(state.rawFrontmatter.publishedAt) || undefined;
+  if (bodyInput !== undefined) {
+    const missingImageReferences = findMissingEssayLocalImageReferences({
+      bodyText: bodyInput,
+      sourcePath: state.sourcePath
+    });
+    if (missingImageReferences.length > 0) {
+      return {
+        issues: missingImageReferences.map((reference) =>
+          createIssue('body', `正文引用的本地图片不存在：${reference.relativePath}`)
+        ),
+        changedFields: [],
+        patches: []
+      };
+    }
+  }
+
   const fieldMatrix: Array<{
     field: string;
     path: readonly string[];
@@ -950,8 +1086,8 @@ const buildEssayWritePlan = async (
   }> = [
     { field: 'title', path: ['title'], currentValue: current.title, nextValue: next.frontmatter.title },
     { field: 'description', path: ['description'], currentValue: current.description, nextValue: next.frontmatter.description },
-    { field: 'date', path: ['date'], currentValue: currentDate, nextValue: next.frontmatter.date },
-    { field: 'publishedAt', path: ['publishedAt'], currentValue: currentPublishedAt, nextValue: next.frontmatter.publishedAt },
+    { field: 'date', path: ['date'], currentValue: current.date, nextValue: next.frontmatter.date },
+    { field: 'publishedAt', path: ['publishedAt'], currentValue: current.publishedAt, nextValue: next.frontmatter.publishedAt },
     { field: 'tags', path: ['tags'], currentValue: current.tags, nextValue: next.frontmatter.tags },
     { field: 'draft', path: ['draft'], currentValue: current.draft, nextValue: next.frontmatter.draft },
     { field: 'archive', path: ['archive'], currentValue: current.archive, nextValue: next.frontmatter.archive },

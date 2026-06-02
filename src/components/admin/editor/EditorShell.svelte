@@ -4,6 +4,8 @@ import {
   cloneFrontmatter,
   isEqualFrontmatter
 } from '../../../lib/admin-console/essay-editor-values';
+import { containsMarkdownMath } from '../../../lib/markdown-math';
+import { ensureMarkdownMathStylesheet } from '../../../lib/markdown-math-styles';
 import {
   ADMIN_EDITOR_DEFAULTS_STORAGE_KEY,
   ADMIN_EDITOR_DISPLAY_PREFERENCE_STORAGE_KEY,
@@ -64,6 +66,8 @@ import {
   type StatusState
 } from './editor-shell-helpers';
 import type { MarkdownHighlightTheme } from './editor-markdown-highlight';
+import type { EditableImageBlock } from './editor-image-blocks';
+import type { EditableGalleryBlock } from './editor-gallery-blocks';
 import { createEditorScrollSyncController } from './editor-scroll-sync';
 import {
   buildEssayOutlineListItems,
@@ -167,13 +171,13 @@ let outlineJumpCommand = $state<MarkdownOutlineJumpCommand | null>(null);
 let frontmatterPanelOpen = $state(initialSnapshot.articleInfoOpen);
 let editorDialogs = $state<EditorDialogs | null>(null);
 let imageInsertOpen = $state(false);
+let galleryInsertOpen = $state(false);
+let editingImageBlock = $state<EditableImageBlock | null>(null);
+let editingGalleryBlock = $state<EditableGalleryBlock | null>(null);
 const markdownCommandDispatcher = createMarkdownCommandDispatcher({
   isBusy: () => busy,
   onCommand: (command) => {
     toolbarCommand = command;
-  },
-  onOpenImageInsert: () => {
-    imageInsertOpen = true;
   }
 });
 let editorShellEl = $state<HTMLElement | null>(null);
@@ -409,6 +413,35 @@ const setOutlineTab = (tab: EditorOutlineTab) => {
 
 const closeImageInsert = () => {
   imageInsertOpen = false;
+  editingImageBlock = null;
+};
+
+const handleImageToolRequest = (block: EditableImageBlock | null) => {
+  editingImageBlock = block;
+  imageInsertOpen = true;
+};
+
+const openGalleryInsert = () => {
+  editingGalleryBlock = null;
+  galleryInsertOpen = true;
+};
+
+const closeGalleryInsert = () => {
+  galleryInsertOpen = false;
+  editingGalleryBlock = null;
+};
+
+const handleGalleryEditRequest = (block: EditableGalleryBlock) => {
+  editingGalleryBlock = block;
+  galleryInsertOpen = true;
+};
+
+const removeEditingGallery = () => {
+  const galleryBlock = editingGalleryBlock;
+  if (!galleryBlock) return;
+
+  markdownCommandDispatcher.replaceText(galleryBlock.range, '');
+  editingGalleryBlock = null;
 };
 
 const setBodyScrollElement = (element: HTMLElement | null) => {
@@ -948,6 +981,12 @@ $effect(() => {
 });
 
 $effect(() => {
+  if (containsMarkdownMath(body)) {
+    ensureMarkdownMathStylesheet();
+  }
+});
+
+$effect(() => {
   const currentBody = body;
 
   if (!previewInitialized) {
@@ -1009,6 +1048,8 @@ $effect(() => {
     onApplyTool={markdownCommandDispatcher.applyTool}
     onApplyHeading={markdownCommandDispatcher.applyHeading}
     onApplyCallout={markdownCommandDispatcher.applyCallout}
+    onInsertText={markdownCommandDispatcher.insertText}
+    onOpenGallery={openGalleryInsert}
     onToggleOutline={toggleOutline}
     onToggleSyntax={toggleSyntax}
     onToggleLineNumbers={toggleLineNumbers}
@@ -1060,6 +1101,8 @@ $effect(() => {
     {essayOutlineListItems}
     onBodyScrollElementChange={setBodyScrollElement}
     onBodyOutlineJump={handleBodyOutlineJump}
+    onImageToolRequest={handleImageToolRequest}
+    onGalleryEditRequest={handleGalleryEditRequest}
     onPreviewScrollElementChange={setPreviewScrollElement}
     onShortcutTool={markdownCommandDispatcher.applyTool}
     onToggleScrollSync={toggleScrollSync}
@@ -1080,14 +1123,34 @@ $effect(() => {
     canSave={canWriteContent}
     {slugPlaceholder}
     {imageInsertOpen}
+    {galleryInsertOpen}
+    imageEditDraft={editingImageBlock?.draft ?? null}
+    galleryEditDraft={editingGalleryBlock?.draft ?? null}
     {imageUploadEndpoint}
     {entryId}
     onFrontmatterClose={closeFrontmatterPanel}
     onFrontmatterReset={resetFrontmatterToBaseline}
     onFrontmatterSave={() => void requestContentWrite()}
     onImageClose={closeImageInsert}
-    onImageInsert={(markdown) => {
-      markdownCommandDispatcher.insertText(markdown);
+    onImageInsert={(text, placement) => {
+      const imageBlock = editingImageBlock;
+      if (imageBlock) {
+        markdownCommandDispatcher.replaceText(imageBlock.range, text, placement);
+        editingImageBlock = null;
+        return;
+      }
+      markdownCommandDispatcher.insertText(text, placement);
+    }}
+    onGalleryClose={closeGalleryInsert}
+    onGalleryRemove={removeEditingGallery}
+    onGalleryInsert={(text, placement) => {
+      const galleryBlock = editingGalleryBlock;
+      if (galleryBlock) {
+        markdownCommandDispatcher.replaceText(galleryBlock.range, text, placement);
+        editingGalleryBlock = null;
+        return;
+      }
+      markdownCommandDispatcher.insertText(text, placement);
     }}
   />
 

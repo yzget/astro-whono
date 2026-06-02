@@ -7,6 +7,24 @@ const getSchemaAttrs = (tagName) => {
 
 const mergeAttrs = (...lists) => Array.from(new Set(lists.flat()));
 
+const extendClassNameAttrs = (attrs, allowedClassNames) => {
+  const classNameRules = [];
+  const otherAttrs = [];
+
+  attrs.forEach((attr) => {
+    if (Array.isArray(attr) && attr[0] === 'className') {
+      classNameRules.push(...attr.slice(1));
+      return;
+    }
+    otherAttrs.push(attr);
+  });
+
+  return [
+    ...otherAttrs,
+    ['className', ...classNameRules, ...allowedClassNames]
+  ];
+};
+
 export const sanitizeSchema = {
   ...defaultSchema,
   tagNames: [
@@ -53,12 +71,26 @@ export const sanitizeSchema = {
     img: mergeAttrs(getSchemaAttrs('img'), ['loading', 'decoding', 'width', 'height']),
     source: mergeAttrs(getSchemaAttrs('source'), ['srcset', 'srcSet', 'type', 'media', 'sizes']),
     ul: [['className', 'gallery', 'cols-2', 'cols-3', 'contains-task-list']],
-    figure: [['className', 'figure']],
+    figure: [[
+      'className',
+      'figure',
+      'figure--sm',
+      'figure--md',
+      'figure--lg',
+      'figure--full',
+      'figure--left',
+      'figure--center',
+      'figure--right'
+    ]],
     figcaption: [['className', 'figure-caption']],
     div: mergeAttrs(getSchemaAttrs('div'), ['dataIcon', 'dataLang', 'dataLines', 'data-icon', 'data-lang', 'data-lines']),
     p: mergeAttrs(getSchemaAttrs('p'), ['dataIcon', 'data-icon']),
     pre: mergeAttrs(getSchemaAttrs('pre'), ['dataLang', 'dataLines', 'data-lang', 'data-lines']),
-    code: mergeAttrs(getSchemaAttrs('code'), ['dataLang', 'data-lang']),
+    code: [
+      ...extendClassNameAttrs(getSchemaAttrs('code'), ['math-inline', 'math-display']),
+      'dataLang',
+      'data-lang'
+    ],
     button: mergeAttrs(getSchemaAttrs('button'), [
       'type',
       'disabled',
