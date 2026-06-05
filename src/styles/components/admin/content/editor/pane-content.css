@@ -434,6 +434,30 @@
   color: var(--admin-editor-markdown-html-color);
 }
 
+.admin-editor-body__codemirror .cm-admin-about-directive-input {
+  font-weight: 500;
+}
+
+.admin-editor-body__codemirror .cm-admin-about-directive-input--text {
+  color: var(--admin-editor-markdown-html-value-color);
+}
+
+.admin-editor-body__codemirror .cm-admin-about-directive-input--question {
+  color: var(--admin-editor-markdown-html-tag-color);
+}
+
+.admin-editor-body__codemirror .cm-admin-about-directive-input--url {
+  color: var(--admin-editor-markdown-html-attribute-color);
+  text-decoration: underline;
+  text-decoration-color: var(--admin-editor-markdown-link-underline);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.admin-editor-body__codemirror .cm-admin-about-directive-input--path {
+  color: var(--admin-editor-markdown-code-info-color);
+}
+
 .admin-editor-body__codemirror .cm-tooltip:has(.admin-editor-image-edit-tooltip) {
   border: 0;
   background: transparent;

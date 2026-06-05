@@ -153,6 +153,20 @@ const shouldEnableScopedFilterMenus = Boolean(
   && pageData.collection !== 'all'
   && getAdminContentCollectionCapability(pageData.collection).articleFilters
 );
+const hiddenFilterInputs = pageData && pageData.collection !== 'all'
+  ? [
+      { name: 'collection', value: pageData.collection },
+      ...(pageData.filterState.draft !== 'all'
+        ? [{ name: 'draft', value: pageData.filterState.draft }]
+        : []),
+      ...(pageData.filterState.sort !== 'recent'
+        ? [{ name: 'sort', value: pageData.filterState.sort }]
+        : []),
+      ...(pageData.filterState.year !== null
+        ? [{ name: 'year', value: String(pageData.filterState.year) }]
+        : [])
+    ]
+  : [];
 const contentFilterMenuGroupName = 'admin-content-filter-menu';
 
 const getContentEmptyMessage = (sectionLabel: string): string => {
@@ -221,26 +235,9 @@ const getContentEmptyMessage = (sectionLabel: string): string => {
                   placeholder={searchPlaceholder}
                 />
               </label>
-              {
-                pageData.collection !== 'all' ? (
-                  <input type="hidden" name="collection" value={pageData.collection} />
-                ) : null
-              }
-              {
-                pageData.collection !== 'all' && pageData.filterState.draft !== 'all' ? (
-                  <input type="hidden" name="draft" value={pageData.filterState.draft} />
-                ) : null
-              }
-              {
-                pageData.collection !== 'all' && pageData.filterState.sort !== 'recent' ? (
-                  <input type="hidden" name="sort" value={pageData.filterState.sort} />
-                ) : null
-              }
-              {
-                pageData.collection !== 'all' && pageData.filterState.year !== null ? (
-                  <input type="hidden" name="year" value={String(pageData.filterState.year)} />
-                ) : null
-              }
+              {hiddenFilterInputs.map((input) => (
+                <input type="hidden" name={input.name} value={input.value} />
+              ))}
 
               <div id="admin-content-filter-panel" class="admin-content-filter-panel">
                 <div class="admin-content-filter-bar">

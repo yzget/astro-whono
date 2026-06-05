@@ -27,6 +27,8 @@ import { rehypeAboutDirectives, remarkAboutDirectives } from '../../plugins/abou
 import remarkCallout from '../../plugins/remark-callout.mjs';
 import { sanitizeSchema } from '../../plugins/sanitize-schema.mjs';
 import shikiToolbar from '../../plugins/shiki-toolbar.mjs';
+import { replaceAboutContactLinksPlaceholderHtml } from '../about-contact-links';
+import { getThemeSettings } from '../theme-settings';
 import {
   resolveAdminContentEntrySourcePath
 } from './content-entry-source';
@@ -218,10 +220,16 @@ export const renderAdminMarkdownPreview = async ({
   const sourceFilePath = entryId ? resolveAdminContentEntrySourcePath(collection, entryId) : null;
   const previewProcessor = createPreviewProcessor(collection, sourceFilePath, source);
   const file = await previewProcessor.process(source);
+  const html = collection === 'about'
+    ? replaceAboutContactLinksPlaceholderHtml(
+        String(file),
+        getThemeSettings().settings.site.socialLinks.resolvedSocialItems
+      )
+    : String(file);
 
   return {
     collection,
-    html: String(file),
+    html,
     elapsedMs: roundElapsedMs(performance.now() - startedAt),
     codeHighlight: ADMIN_PREVIEW_CODE_HIGHLIGHT_MODE,
     warnings: file.messages.map((message) => String(message))

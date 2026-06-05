@@ -23,6 +23,7 @@ The format is based on Keep a Changelog, and this project aims to follow Semanti
 - Content Console 改为直接基于源文件展示内容列表，提升开发环境中新建、保存和删除文章后的刷新稳定性。
 - Content Console 现在统一展示 essay、bits、memo 和 about 内容入口；memo 与 about 仍是固定单页内容，不支持创建或删除。
 - `/memo/` 页面顶部引言现在可在本地后台的 memo 编辑页中维护；建议将旧版引言迁移到 `src/content/memo/index.md` 正文开头（第一个 H2 前），未迁移的站点仍保留兼容显示。
+- `/about/` 页面现在可在正文中用 `::contact-links` 指定联系链接的位置；移除该占位后不再显示联系列表，链接内容仍来自 Theme Console 的个人链接配置。
 
 ### Fixed
 - 修复后台图片预览在遇到无效地址时仍可能尝试加载图片的问题，地址不合法时会隐藏预览并清空图片源。

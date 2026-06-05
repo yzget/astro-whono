@@ -235,7 +235,11 @@ describe('admin preview api', () => {
           '',
           ':::faq{question="能编辑吗？"}',
           '可以。',
-          ':::'
+          ':::',
+          '',
+          '## 联系',
+          '',
+          '::contact-links'
         ].join('\n')
       }),
       url: new URL('http://127.0.0.1:4321/api/admin/preview')
@@ -255,6 +259,10 @@ describe('admin preview api', () => {
     expect(payload.result.html).toContain('<div class="qa-list" aria-label="常见问题">');
     expect(payload.result.html).toContain('<summary class="qa-question">');
     expect(payload.result.html).toContain('能编辑吗？');
+    expect(payload.result.html).toContain('class="contact-list"');
+    expect(payload.result.html).toContain('href="https://github.com/cxro/astro-whono"');
+    expect(payload.result.html).toContain('href="mailto:Whono@linux.do"');
+    expect(payload.result.html).not.toContain('data-about-contact-links');
     expect(payload.result.html).not.toContain('javascript:alert');
     expect(payload.result.html).not.toContain('http://bad.example');
   });
@@ -276,6 +284,7 @@ describe('admin preview api', () => {
       expect(result.html).not.toContain('qa-list');
       expect(result.html).not.toContain('qa-item');
       expect(result.html).not.toContain('qa-question');
+      expect(result.html).not.toContain('contact-list');
       expect(result.html).toContain('Answer');
     }
   });

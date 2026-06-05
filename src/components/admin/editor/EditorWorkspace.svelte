@@ -32,6 +32,7 @@ type Props = {
   toolbarCommand?: MarkdownToolbarCommand | null;
   outlineJumpCommand?: MarkdownOutlineJumpCommand | null;
   lineNumbersEnabled?: boolean;
+  aboutDirectiveHighlightEnabled?: boolean;
   markdownHighlightTheme: MarkdownHighlightTheme;
   effectiveViewMode: EditorViewMode;
   bodyLineCount: number;
@@ -90,6 +91,7 @@ let {
   toolbarCommand = null,
   outlineJumpCommand = null,
   lineNumbersEnabled = false,
+  aboutDirectiveHighlightEnabled = false,
   markdownHighlightTheme,
   effectiveViewMode,
   bodyLineCount,
@@ -161,6 +163,7 @@ let {
         {toolbarCommand}
         {outlineJumpCommand}
         {lineNumbersEnabled}
+        {aboutDirectiveHighlightEnabled}
         onScrollElementChange={onBodyScrollElementChange}
         onOutlineJump={onBodyOutlineJump}
         {mediaEditEnabled}

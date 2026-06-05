@@ -5,6 +5,7 @@ import Braces from '@lucide/svelte/icons/braces';
 import ArrowDown from '@lucide/svelte/icons/arrow-down';
 import ArrowUp from '@lucide/svelte/icons/arrow-up';
 import ArrowUpToLine from '@lucide/svelte/icons/arrow-up-to-line';
+import BadgeQuestionMark from '@lucide/svelte/icons/badge-question-mark';
 import CircleCheck from '@lucide/svelte/icons/circle-check';
 import CalendarDays from '@lucide/svelte/icons/calendar-days';
 import CodeXml from '@lucide/svelte/icons/code-xml';
@@ -20,6 +21,7 @@ import Hash from '@lucide/svelte/icons/hash';
 import Info from '@lucide/svelte/icons/info';
 import Italic from '@lucide/svelte/icons/italic';
 import Link from '@lucide/svelte/icons/link';
+import Link2 from '@lucide/svelte/icons/link-2';
 import List from '@lucide/svelte/icons/list';
 import ListCheck from '@lucide/svelte/icons/list-check';
 import ListCollapse from '@lucide/svelte/icons/list-collapse';
@@ -43,6 +45,7 @@ import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import SquareAsterisk from '@lucide/svelte/icons/square-asterisk';
 import SquareChartGantt from '@lucide/svelte/icons/square-chart-gantt';
 import SquareSigma from '@lucide/svelte/icons/square-sigma';
+import SquareUserRound from '@lucide/svelte/icons/square-user-round';
 import Smile from '@lucide/svelte/icons/smile';
 import Strikethrough from '@lucide/svelte/icons/strikethrough';
 import Tag from '@lucide/svelte/icons/tag';
@@ -60,6 +63,7 @@ const icons = {
   'arrow-down': ArrowDown,
   'arrow-up': ArrowUp,
   'calendar-days': CalendarDays,
+  'badge-question-mark': BadgeQuestionMark,
   bold: Bold,
   'book-open-text': BookOpenText,
   check: CircleCheck,
@@ -78,6 +82,7 @@ const icons = {
   info: Info,
   italic: Italic,
   link: Link,
+  'link-2': Link2,
   list: List,
   'list-collapse': ListCollapse,
   lock: Lock,
@@ -100,6 +105,7 @@ const icons = {
   'square-asterisk': SquareAsterisk,
   'square-chart-gantt': SquareChartGantt,
   'square-sigma': SquareSigma,
+  'square-user-round': SquareUserRound,
   smile: Smile,
   strikethrough: Strikethrough,
   tag: Tag,

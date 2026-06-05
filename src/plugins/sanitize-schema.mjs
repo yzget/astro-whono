@@ -83,7 +83,16 @@ export const sanitizeSchema = {
       'figure--right'
     ]],
     figcaption: [['className', 'figure-caption']],
-    div: mergeAttrs(getSchemaAttrs('div'), ['dataIcon', 'dataLang', 'dataLines', 'data-icon', 'data-lang', 'data-lines']),
+    div: mergeAttrs(getSchemaAttrs('div'), [
+      'dataIcon',
+      'dataLang',
+      'dataLines',
+      'dataAboutContactLinks',
+      'data-icon',
+      'data-lang',
+      'data-lines',
+      'data-about-contact-links'
+    ]),
     p: mergeAttrs(getSchemaAttrs('p'), ['dataIcon', 'data-icon']),
     pre: mergeAttrs(getSchemaAttrs('pre'), ['dataLang', 'dataLines', 'data-lang', 'data-lines']),
     code: [

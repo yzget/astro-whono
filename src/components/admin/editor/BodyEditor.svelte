@@ -23,6 +23,7 @@ import {
   type EditableImageBlock
 } from './editor-image-blocks';
 import type { EditableGalleryBlock } from './editor-gallery-blocks';
+import { getAboutDirectiveHighlightExtension } from './editor-about-directive-highlight';
 import { getImageEditTooltipExtension } from './editor-image-edit-tooltip';
 import { getMarkdownCodeDecorationsExtension } from './editor-markdown-code-decorations';
 import { getMarkdownHighlightExtension } from './editor-markdown-highlight-extension';
@@ -37,6 +38,7 @@ type Props = {
   toolbarCommand?: MarkdownToolbarCommand | null;
   outlineJumpCommand?: MarkdownOutlineJumpCommand | null;
   lineNumbersEnabled?: boolean;
+  aboutDirectiveHighlightEnabled?: boolean;
   mediaEditEnabled?: boolean;
   galleryEditEnabled?: boolean;
   onScrollElementChange?: (element: HTMLElement | null) => void;
@@ -53,6 +55,7 @@ let {
   toolbarCommand = null,
   outlineJumpCommand = null,
   lineNumbersEnabled = false,
+  aboutDirectiveHighlightEnabled = false,
   mediaEditEnabled = true,
   galleryEditEnabled = true,
   onScrollElementChange,
@@ -216,6 +219,7 @@ const createEditorExtensions = (): Extension[] => [
   }),
   getMarkdownHighlightExtension(),
   getMarkdownCodeDecorationsExtension(),
+  ...(aboutDirectiveHighlightEnabled ? [getAboutDirectiveHighlightExtension()] : []),
   ...createMediaEditExtensions(),
   history(),
   EditorView.lineWrapping,

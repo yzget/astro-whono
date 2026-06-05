@@ -13,9 +13,11 @@ import {
   type MarkdownHighlightTheme
 } from './editor-markdown-highlight';
 import {
+  MARKDOWN_ABOUT_DIRECTIVE_INSERT_TOOLS,
   MARKDOWN_DETAILS_INSERT_TOOL,
   MARKDOWN_MATH_INSERT_TOOLS,
   MARKDOWN_MORE_SEPARATOR_INSERT_TOOL,
+  type MarkdownAboutDirectiveInsertTool,
   type MarkdownMathInsertTool
 } from './insert-tools';
 import type {
@@ -86,6 +88,7 @@ type Props = {
   busy?: boolean;
   imageToolEnabled?: boolean;
   galleryToolEnabled?: boolean;
+  aboutDirectiveToolsEnabled?: boolean;
   outlineOpen?: boolean;
   outlineVisible?: boolean;
   outlineToggleLabel: string;
@@ -130,6 +133,7 @@ let {
   busy = false,
   imageToolEnabled = true,
   galleryToolEnabled = true,
+  aboutDirectiveToolsEnabled = false,
   outlineOpen = false,
   outlineVisible = outlineOpen,
   outlineToggleLabel,
@@ -343,6 +347,13 @@ const openGalleryDialog = () => {
 
   closeInsertMenu();
   onOpenGallery();
+};
+
+const applyAboutDirectiveTool = (tool: MarkdownAboutDirectiveInsertTool) => {
+  if (busy) return;
+
+  closeInsertMenu();
+  onInsertText(tool.text, tool.placement);
 };
 
 const applyDetailsTool = () => {
@@ -715,8 +726,26 @@ $effect(() => {
             onInsert={handleEmojiInsert}
           />
         {/if}
+
       </div>
     </div>
+
+      {#if aboutDirectiveToolsEnabled}
+        <div class="admin-editor-markdown-toolbar__group admin-editor-markdown-toolbar__about-direct" role="group" aria-label="关于页面内容">
+          {#each MARKDOWN_ABOUT_DIRECTIVE_INSERT_TOOLS as tool}
+            <button
+              class="admin-btn admin-btn--tool admin-btn--compact admin-btn--icon admin-editor-markdown-toolbar__button"
+              type="button"
+              data-tooltip={tool.label}
+              aria-label={tool.label}
+              disabled={busy}
+              onclick={() => applyAboutDirectiveTool(tool)}
+            >
+              <AdminEditorIcon name={tool.icon} size={toolbarIconSize} strokeWidth={2} />
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       <details
       class="admin-editor-markdown-toolbar__menu admin-editor-markdown-toolbar__menu--insert"
@@ -771,6 +800,25 @@ $effect(() => {
             <span class="admin-editor-insert-menu__label">{moreSeparatorTool.label}</span>
           </button>
         </div>
+
+        {#if aboutDirectiveToolsEnabled}
+          <div class="admin-editor-insert-menu__group" role="group" aria-label="关于页面内容">
+            <span class="admin-editor-insert-menu__group-label">关于页面</span>
+            {#each MARKDOWN_ABOUT_DIRECTIVE_INSERT_TOOLS as tool}
+              <button
+                class="admin-content-menu-item admin-editor-insert-menu__item"
+                type="button"
+                disabled={busy}
+                onclick={() => applyAboutDirectiveTool(tool)}
+              >
+                <span class="admin-editor-insert-menu__icon" aria-hidden="true">
+                  <AdminEditorIcon name={tool.icon} size={15} strokeWidth={2} />
+                </span>
+                <span class="admin-editor-insert-menu__label">{tool.label}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
 
         <div class="admin-editor-insert-menu__group" role="group" aria-label="内容块">
           <span class="admin-editor-insert-menu__group-label">内容块</span>

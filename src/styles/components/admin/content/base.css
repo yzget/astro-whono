@@ -92,11 +92,8 @@
 }
 
 .admin-content-menu-panel,
-.admin-content-more-panel {
-  position: absolute;
-  inset-block-start: calc(100% + 8px);
-  inset-inline-end: 0;
-  z-index: 20;
+.admin-content-more-panel,
+.admin-content-filter-menu__panel {
   display: grid;
   gap: 2px;
   width: 102px;
@@ -105,6 +102,14 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--bg) 92%, var(--panel) 8%);
   box-shadow: 0 14px 34px color-mix(in srgb, #000 15%, transparent);
+}
+
+.admin-content-menu-panel,
+.admin-content-more-panel {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 20;
 }
 
 .admin-content-menu-item {

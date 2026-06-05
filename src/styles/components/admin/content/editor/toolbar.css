@@ -730,6 +730,7 @@
   .admin-editor-markdown-toolbar__gallery-direct,
   .admin-editor-markdown-toolbar__more-direct,
   .admin-editor-markdown-toolbar__details-direct,
+  .admin-editor-markdown-toolbar__about-direct,
   .admin-editor-markdown-toolbar__insert-direct,
   .admin-editor-markdown-toolbar__menu--list {
     display: none;

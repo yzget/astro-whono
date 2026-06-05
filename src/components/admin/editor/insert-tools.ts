@@ -26,6 +26,15 @@ export type MarkdownMoreSeparatorInsertTool = {
   placement: Extract<MarkdownInsertPlacement, 'block'>;
 };
 
+export type MarkdownAboutDirectiveInsertTool = {
+  type: 'aboutDirective';
+  id: 'friend' | 'faq' | 'contactLinks';
+  label: string;
+  icon: 'square-user-round' | 'badge-question-mark' | 'link-2';
+  text: string;
+  placement: Extract<MarkdownInsertPlacement, 'block'>;
+};
+
 export const MARKDOWN_DETAILS_SUMMARY_PLACEHOLDER = '标题';
 export const MARKDOWN_DETAILS_BODY_PLACEHOLDER = '内容';
 
@@ -61,3 +70,38 @@ export const MARKDOWN_MORE_SEPARATOR_INSERT_TOOL: MarkdownMoreSeparatorInsertToo
   text: MARKDOWN_MORE_SEPARATOR_TEXT,
   placement: 'block'
 };
+
+export const MARKDOWN_ABOUT_DIRECTIVE_INSERT_TOOLS: readonly MarkdownAboutDirectiveInsertTool[] = [
+  {
+    type: 'aboutDirective',
+    id: 'friend',
+    label: '插入友链',
+    icon: 'square-user-round',
+    text: [
+      ':::friend{name="站点名称" url="https://example.com" avatar="https://example.com/avatar.png"}',
+      '一句介绍',
+      ':::'
+    ].join('\n'),
+    placement: 'block'
+  },
+  {
+    type: 'aboutDirective',
+    id: 'faq',
+    label: '插入问答',
+    icon: 'badge-question-mark',
+    text: [
+      ':::faq{question="问题标题"}',
+      '回答内容',
+      ':::'
+    ].join('\n'),
+    placement: 'block'
+  },
+  {
+    type: 'aboutDirective',
+    id: 'contactLinks',
+    label: '插入联系方式',
+    icon: 'link-2',
+    text: '::contact-links',
+    placement: 'block'
+  }
+] as const;

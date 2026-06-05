@@ -176,11 +176,12 @@ describe('admin-console/content-source-index', () => {
       title: '关于',
       slug: 'about',
       date: null,
-      dateLabel: '固定单页',
       year: null,
       tags: [],
       sourceError: null
     });
+    expect(about?.dateLabel).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(about?.dateLabel).not.toBe('固定单页');
     expect(about?.searchHaystack).toContain('关于');
     expect(about?.searchHaystack).not.toContain('About body text');
   });

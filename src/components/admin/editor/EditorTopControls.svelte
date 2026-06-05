@@ -20,6 +20,7 @@ type Props = {
   toolbarPreset?: EditorToolbarPreset;
   imageToolEnabled?: boolean;
   galleryToolEnabled?: boolean;
+  aboutDirectiveToolsEnabled?: boolean;
   outlineOpen: boolean;
   outlineVisible: boolean;
   outlineToggleLabel: string;
@@ -83,6 +84,7 @@ let {
   toolbarPreset = 'full',
   imageToolEnabled = true,
   galleryToolEnabled = true,
+  aboutDirectiveToolsEnabled = false,
   outlineOpen,
   outlineVisible,
   outlineToggleLabel,
@@ -146,6 +148,7 @@ let {
     {busy}
     {imageToolEnabled}
     {galleryToolEnabled}
+    {aboutDirectiveToolsEnabled}
     {outlineOpen}
     {outlineVisible}
     {outlineToggleLabel}

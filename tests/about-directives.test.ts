@@ -69,18 +69,27 @@ describe('about directives markdown transform', () => {
     expect(html.match(/<details class="qa-item">/g)).toHaveLength(2);
   });
 
+  it('keeps contact-links as a runtime placeholder in about markdown', async () => {
+    const html = await renderAboutMarkdown('::contact-links');
+
+    expect(html).toBe('<div data-about-contact-links=""></div>');
+  });
+
   it('does not transform directives outside the about source file', async () => {
     const html = await renderAboutMarkdown(
       [
         ':::faq{question="Q1"}',
         'A1',
-        ':::'
+        ':::',
+        '',
+        '::contact-links'
       ].join('\n'),
       { path: new URL('../src/content/essay/demo.md', import.meta.url) }
     );
 
     expect(html).not.toContain('qa-list');
     expect(html).not.toContain('qa-item');
+    expect(html).not.toContain('data-about-contact-links');
     expect(html).toContain('A1');
   });
 });

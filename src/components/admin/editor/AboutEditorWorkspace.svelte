@@ -684,6 +684,7 @@ onMount(() => {
     toolbarPreset="full"
     imageToolEnabled={editorAdapter.capabilities.bodyImageInsert}
     galleryToolEnabled={editorAdapter.capabilities.bodyGalleryInsert}
+    aboutDirectiveToolsEnabled
     outlineOpen={outlineWantedOpen}
     {outlineVisible}
     {outlineToggleLabel}
@@ -759,6 +760,7 @@ onMount(() => {
     getWriteFieldLabel={editorAdapter.getWriteFieldLabel}
     mediaEditEnabled={editorAdapter.capabilities.bodyImageInsert}
     galleryEditEnabled={editorAdapter.capabilities.bodyGalleryInsert}
+    aboutDirectiveHighlightEnabled
     {previewHtml}
     {previewBusy}
     previewArticleClass="about-body"

@@ -3,44 +3,28 @@ import { getEntry, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import BrandIcon from '../../components/BrandIcon.astro';
 import '../../styles/about.css';
-import { getThemeSettings, type SiteSocialIconKey } from '../../lib/theme-settings';
+import { getThemeSettings } from '../../lib/theme-settings';
+import { replaceAboutContactLinksPlaceholderHtml } from '../../lib/about-contact-links';
 
 const entry = await getEntry('about', 'index');
 if (!entry) {
   throw new Error('Missing about page entry: src/content/about/index.md');
 }
 
-const { Content } = await render(entry);
 const { settings } = getThemeSettings();
 const resolvedSocialItems = settings.site.socialLinks.resolvedSocialItems.filter((item) => item.visible);
 const aboutTitle = settings.page.about.title || '关于';
 const aboutSubtitle = settings.page.about.subtitle;
-
-type ContactItem = {
-  key: string;
-  href: string;
-  icon: SiteSocialIconKey;
-  text: string;
-};
-
-const formatExternalLabel = (href: string): string => {
-  try {
-    const parsed = new URL(href);
-    const path = parsed.pathname.replace(/^\/+|\/+$/g, '');
-    return path || parsed.hostname;
-  } catch {
-    return href;
-  }
-};
-
-const contactItems: ContactItem[] = [
-  ...resolvedSocialItems.map((item) => ({
-    key: item.id,
-    href: item.href,
-    icon: item.iconKey,
-    text: item.id === 'email' ? item.href.replace(/^mailto:/i, '') : formatExternalLabel(item.href)
-  }))
-];
+const entryWithContactLinks = entry.rendered
+  ? {
+      ...entry,
+      rendered: {
+        ...entry.rendered,
+        html: replaceAboutContactLinksPlaceholderHtml(entry.rendered.html, resolvedSocialItems)
+      }
+    }
+  : entry;
+const { Content } = await render(entryWithContactLinks);
 ---
 
 <BaseLayout
@@ -70,23 +54,9 @@ const contactItems: ContactItem[] = [
     <Content />
   </div>
 
-  {
-    contactItems.length ? (
-      <section class="about-section about-contact" aria-labelledby="about-contact-title">
-        <h2 id="about-contact-title" class="section-title about-section-title">联系与订阅</h2>
-        <div class="contact-block" aria-label="联系方式">
-          <ul class="contact-list">
-            {contactItems.map((item) => (
-              <li>
-                <span class="contact-link-head" aria-hidden="true">
-                  <BrandIcon name={item.icon} class="contact-icon" />
-                </span>
-                <a href={item.href}>{item.text}</a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-    ) : null
-  }
+  <script>
+    import { initCodeCopyButtons } from '../../scripts/lightbox';
+
+    initCodeCopyButtons();
+  </script>
 </BaseLayout>

@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { PAGE_SIZE_BITS } from '../../../site.config.mjs';
 import { deriveMarkdownText, truncateText } from '../../utils/excerpt';
 import {
@@ -38,7 +38,6 @@ const ADMIN_CONTENT_SOURCE_INDEX_EXT_RE = /\.md$/i;
 const MAX_SEARCH_INDEX_TEXT = 600;
 const ESSAY_EXCERPT_LIMIT = 120;
 const BITS_EXCERPT_LIMIT = 180;
-const FIXED_PAGE_DATE_LABEL = '固定单页';
 const UNTITLED_VALUE = '(未设置)';
 const SOURCE_ERROR_DATE_LABEL = '源文件异常';
 
@@ -82,6 +81,7 @@ type SourceRecord = {
   entryId: string;
   publicEntryId: string;
   frontmatter: Record<string, unknown>;
+  sourceModifiedAt: Date | null;
   sourceError: string | null;
   bodyText?: string;
   bodyDerived?: AdminContentSourceBodyDerived;
@@ -152,6 +152,14 @@ const getBitsSourceDateMeta = (date: Date | null): SourceDateMeta =>
     : getUnsetSourceDateMeta();
 
 const getMemoSourceDateMeta = (date: Date | null): SourceDateMeta =>
+  date
+    ? {
+      label: formatISODate(date),
+      year: date.getFullYear()
+    }
+    : getUnsetSourceDateMeta();
+
+const getFileSourceDateMeta = (date: Date | null): SourceDateMeta =>
   date
     ? {
       label: formatISODate(date),
@@ -348,6 +356,8 @@ const createMemoSourceIndexItem: FrontmatterAdapter = (record) => {
 const createAboutSourceIndexItem: FrontmatterAdapter = (record) => {
   const bodyDerived = getBodyDerived(record);
   const sourceError = record.sourceError;
+  const { label } = getFileSourceDateMeta(record.sourceModifiedAt);
+  const hasSourceError = record.sourceError !== null;
 
   return createBaseItem(record, {
     title: '关于',
@@ -356,7 +366,7 @@ const createAboutSourceIndexItem: FrontmatterAdapter = (record) => {
     isDraft: false,
     archive: null,
     date: null,
-    dateLabel: record.sourceError ? SOURCE_ERROR_DATE_LABEL : FIXED_PAGE_DATE_LABEL,
+    dateLabel: hasSourceError ? SOURCE_ERROR_DATE_LABEL : label,
     year: null,
     tags: [],
     searchHaystack: buildSearchHaystack([
@@ -390,14 +400,21 @@ const readSourceRecord = async (
   includeBody: boolean
 ): Promise<SourceRecord> => {
   const identity = resolveSourceRecordIdentity(collection, sourcePath);
+  let sourceModifiedAt: Date | null = null;
 
   try {
+    if (collection === 'about') {
+      const sourceStats = await stat(sourcePath);
+      sourceModifiedAt = sourceStats.mtime;
+    }
+
     if (!includeBody) {
       return {
         collection,
         sourcePath,
         ...identity,
         frontmatter: await readAdminSourceFrontmatterRecord(sourcePath),
+        sourceModifiedAt,
         sourceError: null
       };
     }
@@ -413,6 +430,7 @@ const readSourceRecord = async (
       sourcePath,
       ...identity,
       frontmatter: isRecord(rawFrontmatter) ? rawFrontmatter : {},
+      sourceModifiedAt,
       sourceError: null,
       bodyText,
       bodyDerived: buildBodyDerived(bodyText, getBodyExcerptLimit(collection))
@@ -424,6 +442,7 @@ const readSourceRecord = async (
       sourcePath,
       ...identity,
       frontmatter: {},
+      sourceModifiedAt,
       sourceError: getSourceRecordErrorMessage(error),
       ...(includeBody
         ? {

@@ -87,6 +87,16 @@ export function remarkAboutDirectives(options = {}) {
   return (tree, file) => {
     if (!shouldTransformAboutDirectives(file, options)) return;
 
+    visit(tree, 'leafDirective', (node) => {
+      if (node.name !== 'contact-links') return;
+
+      if (!node.data) node.data = {};
+      node.data.hName = 'div';
+      node.data.hProperties = {
+        'data-about-contact-links': ''
+      };
+    });
+
     visit(tree, 'containerDirective', (node) => {
       if (node.name !== 'friend' && node.name !== 'faq') return;
 

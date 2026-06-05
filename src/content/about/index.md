@@ -12,14 +12,23 @@
 :::
 
 :::friend{name="Whono" url="https://github.com/cxro/astro-whono" avatar="author/avatar.webp"}
-一个轻量、极简的 Astro 主题
+一个极简的双栏 Astro 主题
 :::
 
 
 ## 常见问题
 
 :::faq{question="如何交换友链？"}
-可以通过邮箱或 GitHub Issue 联系我，请附上站点名称、链接、简介和头像。
+可以通过 GitHub Issue 联系我，或者 [发送邮件](mailto:你的邮箱@example.com?subject=交换友链申请&body=站点名称：%0A链接：%0A简介：%0A头像：)。<br>
+请附上站点名称、链接、简介和头像。
+
+  ```yaml
+  # 本站为 demo 站，请勿发送友链交换申请
+  name: Whono
+  url: https://astro.whono.me/
+  description: 一个极简的双栏 Astro 主题
+  avatar: https://astro.whono.me/author/avatar.webp
+  ```
 :::
 
 :::faq{question="可以转载这里的内容吗？"}
@@ -28,4 +37,6 @@
 
 ## 联系
 
-如果你有问题、建议，或想订阅更新，可以通过侧栏或页面中的社交链接找到我。
+如果你有问题、建议，或想订阅更新，可以从这里找到我。
+
+::contact-links
