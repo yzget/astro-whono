@@ -5,7 +5,7 @@ import {
   parseBitsImageRows,
   serializeBitsImageRows,
   updateBitsImageRowSource
-} from '../src/components/admin/editor/bits-image-rows';
+} from '../src/components/admin/editor/bits/bits-image-rows';
 
 describe('bits image row helpers', () => {
   it('parses editable rows from existing bits images JSON', () => {

@@ -3,7 +3,7 @@ import {
   createContentEntry,
   renderContentPreview,
   saveContentEntry
-} from '../src/components/admin/editor/content-editor-client';
+} from '../src/components/admin/editor/shared/content-editor-client';
 import type { AdminBitsEditorValues, AdminEssayEditorValues } from '../src/lib/admin-console/content-shared';
 
 const bitsValues: AdminBitsEditorValues = {

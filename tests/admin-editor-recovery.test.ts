@@ -143,7 +143,7 @@ describe('admin editor recovery', () => {
     )).toBe(true);
     expect(isAdminEditorRecoveryError({
       message: 'Outdated Optimize Dep',
-      url: 'http://localhost:4321/src/components/admin/editor/EditorShell.svelte'
+      url: 'http://localhost:4321/src/components/admin/editor/essay/EditorShell.svelte'
     })).toBe(true);
     expect(isAdminEditorRecoveryError({
       message: 'Outdated Optimize Dep',
@@ -209,8 +209,8 @@ describe('admin editor recovery', () => {
     initAdminEditorRecovery(windowRef, documentRoot);
     windowRef.listeners.get('astro:hydration-error')?.({
       detail: {
-        error: new Error('Failed to fetch dynamically imported module: http://localhost:4321/src/components/admin/editor/EditorShell.svelte#astro-retry=1'),
-        componentUrl: '/src/components/admin/editor/EditorShell.svelte'
+        error: new Error('Failed to fetch dynamically imported module: http://localhost:4321/src/components/admin/editor/essay/EditorShell.svelte#astro-retry=1'),
+        componentUrl: '/src/components/admin/editor/essay/EditorShell.svelte'
       }
     } as unknown as Event);
 

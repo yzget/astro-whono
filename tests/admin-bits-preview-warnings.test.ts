@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('bits editor preview warnings', () => {
   it('keeps API preview warnings wired into the preview status bar', async () => {
-    const source = await readFile('src/components/admin/editor/BitsEditorWorkspace.svelte', 'utf8');
+    const source = await readFile('src/components/admin/editor/bits/BitsEditorWorkspace.svelte', 'utf8');
 
     expect(source).toContain('let previewWarnings = $state<string[]>([]);');
     expect(source).not.toContain('const previewWarnings = $derived([]);');

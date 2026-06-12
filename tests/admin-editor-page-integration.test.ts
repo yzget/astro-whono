@@ -104,7 +104,7 @@ describe('admin editor page integration', () => {
 
   it('composes inline size observer, page actions portal, and page integration cleanup', async () => {
     const { createEditorPageLifecycle } = await import(
-      '../src/components/admin/editor/editor-page-lifecycle'
+      '../src/components/admin/editor/shared/editor-page-lifecycle'
     );
     const documentRoot = createDocumentRoot();
     const windowRef = createWindowRef();
@@ -184,7 +184,7 @@ describe('admin editor page integration', () => {
 
   it('binds editor details, navigation guard, and article info trigger with one cleanup', async () => {
     const { bindEditorPageIntegration } = await import(
-      '../src/components/admin/editor/editor-page-integration'
+      '../src/components/admin/editor/shared/editor-page-integration'
     );
     const documentRoot = createDocumentRoot();
     const windowRef = createWindowRef();
@@ -228,7 +228,7 @@ describe('admin editor page integration', () => {
 
   it('supports workspaces without article info triggers', async () => {
     const { bindEditorPageIntegration } = await import(
-      '../src/components/admin/editor/editor-page-integration'
+      '../src/components/admin/editor/shared/editor-page-integration'
     );
     const documentRoot = createDocumentRoot();
     const windowRef = createWindowRef();
@@ -258,7 +258,7 @@ describe('admin editor page integration', () => {
 
   it('guards dirty navigation and beforeunload through the composed helper', async () => {
     const { bindEditorPageIntegration } = await import(
-      '../src/components/admin/editor/editor-page-integration'
+      '../src/components/admin/editor/shared/editor-page-integration'
     );
     const { TestElement, TestAnchorElement } = installElementStubs();
     const documentRoot = createDocumentRoot();
@@ -312,7 +312,7 @@ describe('admin editor page integration', () => {
 
   it('toggles article info triggers and removes the handler on cleanup', async () => {
     const { bindEditorPageIntegration } = await import(
-      '../src/components/admin/editor/editor-page-integration'
+      '../src/components/admin/editor/shared/editor-page-integration'
     );
     const { TestElement, TestButtonElement } = installElementStubs();
     const documentRoot = createDocumentRoot();

@@ -5,14 +5,14 @@ import {
   insertMarkdownText,
   replaceMarkdownText,
   type MarkdownTextEdit
-} from '../src/components/admin/editor/editor-markdown-transforms';
-import { createMarkdownCommandDispatcher } from '../src/components/admin/editor/editor-markdown-command-dispatcher';
+} from '../src/components/admin/editor/markdown/editor-markdown-transforms';
+import { createMarkdownCommandDispatcher } from '../src/components/admin/editor/markdown/editor-markdown-command-dispatcher';
 import {
   MARKDOWN_DETAILS_INSERT_TOOL,
   MARKDOWN_DETAILS_SUMMARY_PLACEHOLDER,
   MARKDOWN_MATH_INSERT_TOOLS
-} from '../src/components/admin/editor/insert-tools';
-import type { MarkdownToolbarCommand } from '../src/components/admin/editor/markdown-tools';
+} from '../src/components/admin/editor/markdown/insert-tools';
+import type { MarkdownToolbarCommand } from '../src/components/admin/editor/markdown/markdown-tools';
 
 const expectMarkdownEdit = (
   source: string,

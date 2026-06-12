@@ -5,7 +5,7 @@ import {
   normalizeBitsLocationInput,
   splitBitsPublishTagsText,
   toInlineBitsTags
-} from '../src/components/admin/editor/bits-publish-tags';
+} from '../src/components/admin/editor/bits/bits-publish-tags';
 
 describe('bits publish tags helpers', () => {
   it('splits location tags from stored tags text for the publish strip', () => {

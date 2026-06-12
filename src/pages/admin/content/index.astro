@@ -68,8 +68,8 @@ let ContentListActionsIsland: any = null;
 let ContentBulkActionsIsland: any = null;
 if (import.meta.env.DEV && pageData) {
   const actions = await Promise.all([
-    import('../../../components/admin/editor/ContentListActionsIsland.astro'),
-    import('../../../components/admin/editor/ContentBulkActionsIsland.astro')
+    import('../../../components/admin/editor/list-actions/ContentListActionsIsland.astro'),
+    import('../../../components/admin/editor/list-actions/ContentBulkActionsIsland.astro')
   ]);
   ContentListActionsIsland = actions[0].default;
   ContentBulkActionsIsland = actions[1].default;

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createEditorPreviewRequestGuard
-} from '../src/components/admin/editor/editor-preview-request-guard';
+} from '../src/components/admin/editor/shared/editor-preview-request-guard';
 
 describe('editor preview request guard', () => {
   it('aborts the active preview request when a newer one begins', () => {

@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const projectRoot = path.resolve('.');
-const editorToolbarPath = 'src/components/admin/editor/EditorToolbar.svelte';
-const emojiPickerPopoverPath = 'src/components/admin/editor/EmojiPickerPopover.svelte';
-const emojiPickerClientPath = 'src/components/admin/editor/emoji-picker-client.ts';
+const editorToolbarPath = 'src/components/admin/editor/markdown/EditorToolbar.svelte';
+const emojiPickerPopoverPath = 'src/components/admin/editor/emoji/EmojiPickerPopover.svelte';
+const emojiPickerClientPath = 'src/components/admin/editor/emoji/emoji-picker-client.ts';
 
 const readText = (relativePath) => readFileSync(path.join(projectRoot, relativePath), 'utf8');
 

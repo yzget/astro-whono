@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getContentEditorAdapter
-} from '../src/components/admin/editor/content-editor-adapters';
+} from '../src/components/admin/editor/shared/content-editor-adapters';
 import {
   getPayloadEditorBody,
   getPayloadEditorValues

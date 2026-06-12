@@ -13,14 +13,14 @@ import {
   loadAdminContentSourceIndex,
   loadAdminContentSourceManifest
 } from '../../lib/admin-console/content-source-index';
-import type { BitsEditorIslandProps } from './editor/bits-editor-island-props';
-import type { EssayEditorShellProps } from './editor/editor-shell-props';
+import type { BitsEditorIslandProps } from './editor/bits/bits-editor-island-props';
+import type { EssayEditorShellProps } from './editor/essay/editor-shell-props';
 import type {
   EditorOutlineEssaySourceItem,
   EditorOutlineListSourceItem
-} from './editor/editor-outline-helpers';
-import type { MemoEditorIslandProps } from './editor/memo-editor-island-props';
-import type { AboutEditorIslandProps } from './editor/about-editor-island-props';
+} from './editor/markdown/editor-outline-helpers';
+import type { MemoEditorIslandProps } from './editor/fixed-page/memo-editor-island-props';
+import type { AboutEditorIslandProps } from './editor/fixed-page/about-editor-island-props';
 
 type WithBase = (path: string) => string;
 

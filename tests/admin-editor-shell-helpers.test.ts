@@ -13,12 +13,12 @@ import {
   resolveEditorLayoutPreference,
   resolveEditorSidePanelPreference,
   type EditorSidePanelPreference
-} from '../src/components/admin/editor/editor-shell-helpers';
+} from '../src/components/admin/editor/shared/editor-shell-helpers';
 import {
   DEFAULT_MARKDOWN_HIGHLIGHT_THEME,
   MARKDOWN_HIGHLIGHT_THEME_OPTIONS,
   resolveMarkdownHighlightTheme
-} from '../src/components/admin/editor/editor-markdown-highlight';
+} from '../src/components/admin/editor/markdown/editor-markdown-highlight';
 import {
   DEFAULT_ADMIN_EDITOR_DEFAULTS,
   parseAdminEditorDefaults,

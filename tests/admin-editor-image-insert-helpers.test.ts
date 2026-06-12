@@ -3,21 +3,21 @@ import {
   createImageInsertText,
   createMarkdownImage,
   normalizeRemoteMarkdownImageUrl
-} from '../src/components/admin/editor/image-insert-helpers';
+} from '../src/components/admin/editor/media-insert/image-insert-helpers';
 import {
   createGalleryInsertText,
   normalizeGalleryImageSource
-} from '../src/components/admin/editor/gallery-insert-helpers';
+} from '../src/components/admin/editor/media-insert/gallery-insert-helpers';
 import {
   findEditableImageBlockAtSelection
-} from '../src/components/admin/editor/editor-image-blocks';
+} from '../src/components/admin/editor/media-insert/editor-image-blocks';
 import {
   findEditableGalleryBlockAroundSelection,
   findEditableGalleryBlockAtSelection
-} from '../src/components/admin/editor/editor-gallery-blocks';
+} from '../src/components/admin/editor/media-insert/editor-gallery-blocks';
 import {
   replaceMarkdownText
-} from '../src/components/admin/editor/editor-markdown-transforms';
+} from '../src/components/admin/editor/markdown/editor-markdown-transforms';
 
 describe('admin editor image insert helpers', () => {
   it('keeps the default image output as Markdown', () => {
