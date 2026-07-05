@@ -1,5 +1,5 @@
 {
-  "introLead": "这是一个开源写作主题与示例内容库:包含 随笔/essay、小记/memo、归档/archive 与 絮语/bits，使用与配置请见 README 。",
+  "introLead": "嗨，我是 [蝴蝶飞]！\n在网上看到好玩的开源项目、通俗易懂的技术教程，或者折腾网络代理、博客搭建时的避坑指南，我都会习惯性地把它们梳理、转存到这里。",
   "introMore": "更多文章请访问",
   "introMoreLinks": [
     "archive",
@@ -8,6 +8,6 @@
   "showIntroLead": true,
   "showIntroMore": true,
   "heroPresetId": "default",
-  "heroImageSrc": null,
-  "heroImageAlt": "Whono theme preview"
+  "heroImageSrc": "src/assets/Butterfly Fly1.png",
+  "heroImageAlt": "蝴蝶飞的小站"
 }

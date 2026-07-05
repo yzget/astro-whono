@@ -1,20 +1,20 @@
 {
-  "title": "Astro Themes by Whono",
-  "description": "一个 Astro 主题的展示站：轻量、可维护、可复用。",
+  "title": "Butterfly Fly",
+  "description": "网络搬运工",
   "defaultLocale": "zh-CN",
   "footer": {
     "startYear": 2025,
     "showCurrentYear": true,
-    "copyright": "Whono · Theme Demo · by cxro"
+    "copyright": "本站主题由 【cxro】 提供"
   },
   "adminOverview": {
     "publicVisible": true,
     "hiddenMessage": "作者暂未公开此页面。"
   },
   "socialLinks": {
-    "github": "https://github.com/cxro/astro-whono",
-    "x": "https://twitter.com/yourname",
-    "email": "Astro@Whono.me",
+    "github": "https://github.com/yzget/astro-whono",
+    "x": "https://twitter.com/yzgetr",
+    "email": "fc@332363.xyz",
     "presetOrder": {
       "github": 1,
       "x": 2,

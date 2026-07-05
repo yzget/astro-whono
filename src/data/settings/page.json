@@ -8,19 +8,19 @@
     "subtitle": null
   },
   "bits": {
-    "title": "絮语",
+    "title": "收藏",
     "subtitle": "生活不只是长篇",
     "defaultAuthor": {
-      "name": "Whono",
-      "avatar": "author/avatar.webp"
+      "name": "Merlin",
+      "avatar": "author/favicon.png"
     }
   },
   "memo": {
-    "title": null,
-    "subtitle": null
+    "title": "小记",
+    "subtitle": "记录生活"
   },
   "about": {
     "title": "关于",
-    "subtitle": null
+    "subtitle": "嗨，我是 [蝴蝶飞]！"
   }
 }

@@ -1,5 +1,6 @@
 ---
 import { ADMIN_NAV_ORNAMENT_DEFAULT } from '../../lib/admin-console/theme-shared';
+import UiIcon from '../UiIcon.astro'; 
 
 type SidebarPublicNavItem = {
   href: string;
@@ -15,8 +16,24 @@ const { items, isAdminNavPanel = false } = Astro.props as {
 ---
 
 <ul class="nav sidebar-public-nav" data-admin-nav-panel={isAdminNavPanel ? 'public' : undefined}>
+  
+  <li class="search-menu-item-top">
+    <div class="sidebar-search-box">
+      <div class="search-input-wrapper">
+        <UiIcon name="search" class="search-icon" />
+        <input 
+          type="text" 
+          id="local-search-input" 
+          placeholder="搜索..." 
+          autocomplete="off"
+        />
+      </div>
+      <div id="local-search-result" class="search-result-popover hidden"></div>
+    </div>
+  </li>
+
   {items.map((item) => (
-    <li>
+    <li class="normal-menu-item search-fade-target">
       <a href={item.href} aria-current={item.isActive ? 'page' : undefined}>
         <span>{item.label}</span>
         {item.ornament === ADMIN_NAV_ORNAMENT_DEFAULT ? (
@@ -27,4 +44,224 @@ const { items, isAdminNavPanel = false } = Astro.props as {
       </a>
     </li>
   ))}
+
 </ul>
+
+<style>
+  /* 基础垂直排列 */
+  .sidebar-public-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important; 
+    width: 100% !important;
+    position: relative !important;
+  }
+
+  .search-menu-item-top {
+    display: block !important;
+    width: 100% !important;
+    margin-bottom: 20px !important; 
+  }
+
+  /* 菜单基础样式 + 丝滑的隐藏/显现动画 */
+  .normal-menu-item {
+    display: block !important;
+    margin-bottom: 12px !important; 
+    transition: opacity 0.25s ease, visibility 0.25s ease !important;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* 当激活隐藏状态时的全局样式 */
+  .normal-menu-item.is-searching-hide {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important; /* 彻底不可点击 */
+  }
+
+  .sidebar-search-box {
+    position: relative !important;
+    width: 120px !important; 
+    margin-left: auto !important; 
+  }
+
+  /* 输入框外壳 */
+  .search-input-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    background-color: rgba(128, 128, 128, 0.12) !important;
+    border: 1px solid rgba(128, 128, 128, 0.25) !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .search-input-wrapper:focus-within {
+    border-color: rgba(128, 128, 128, 0.5) !important;
+  }
+
+  .search-icon {
+    width: 14px !important;
+    height: 14px !important;
+    color: currentColor !important;
+    opacity: 0.5 !important;
+    margin-right: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #local-search-input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    width: 100% !important;
+    font-size: 13px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: currentColor !important; 
+  }
+  
+  #local-search-input::placeholder {
+    color: currentColor !important;
+    opacity: 0.4 !important;
+  }
+
+  /* 🚨 弹窗结果面板 🚨 */
+  .search-result-popover {
+    position: absolute !important;
+    top: 120% !important; 
+    right: 0 !important; 
+    
+    width: 240px !important; 
+    max-height: 320px !important;
+    overflow-y: auto !important;
+    
+    z-index: 999999 !important; 
+    border-radius: 8px !important;
+    padding: 6px !important;
+    text-align: left !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+    
+    /* ☀️ 白天模式 */
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+  }
+  
+  /* 🌙 黑夜模式 */
+  :global(.dark) .search-result-popover,
+  :global(html.dark) .search-result-popover,
+  :global([data-theme='dark']) .search-result-popover {
+    background-color: #1e1e20 !important;
+    border-color: #2f3033 !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .hidden { display: none !important; }
+  
+  /* 条目样式 */
+  :global(.search-result-item) {
+    padding: 10px 12px !important;
+    border-radius: 6px !important;
+    display: block !important;
+    text-decoration: none !important;
+    background: transparent !important;
+  }
+  
+  /* 文字 */
+  :global(.search-result-item) :global(.result-title) {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #1a1a1a !important; 
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  
+  :global(.dark) :global(.search-result-item) :global(.result-title),
+  :global(html.dark) :global(.search-result-item) :global(.result-title),
+  :global([data-theme='dark']) :global(.search-result-item) :global(.result-title) {
+    color: #f3f4f6 !important; 
+  }
+  
+  :global(.search-result-item:hover) {
+    background-color: rgba(128, 128, 128, 0.08) !important;
+  }
+  :global(.dark) :global(.search-result-item:hover),
+  :global(html.dark) :global(.search-result-item:hover) {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .no-result-tip {
+    font-size: 12px !important;
+    padding: 10px !important;
+    color: #666666 !important;
+  }
+  :global(.dark) .no-result-tip,
+  :global(html.dark) .no-result-tip {
+    color: #999999 !important;
+  }
+</style>
+
+<script>
+  function initSearch() {
+    const input = document.getElementById('local-search-input') as HTMLInputElement;
+    const resultBox = document.getElementById('local-search-result');
+    if (!input || !resultBox) return;
+
+    // 辅助函数：控制下方原生菜单的显隐
+    function toggleMenuItems(hide: boolean) {
+      const targets = document.querySelectorAll('.search-fade-target');
+      targets.forEach(el => {
+        if (hide) {
+          el.classList.add('is-searching-hide');
+        } else {
+          el.classList.remove('is-searching-hide');
+        }
+      });
+    }
+
+    input.addEventListener('input', () => {
+      const query = input.value.trim().toLowerCase();
+      
+      if (!query) {
+        resultBox.classList.add('hidden');
+        toggleMenuItems(false); // 清空输入，菜单回来
+        return;
+      }
+
+      // 有内容输入时，立刻让下方的菜单完美隐形避让
+      toggleMenuItems(true);
+
+      const allLinks = Array.from(document.querySelectorAll('a'));
+      const searchableItems = allLinks
+        .filter(a => a.href && a.textContent?.trim() && !a.href.includes('#') && !a.href.includes('/admin'))
+        .map(a => ({ title: a.textContent!.trim(), url: a.href }));
+
+      const uniqueItems = Array.from(new Map(searchableItems.map(item => [item.url, item])).values());
+      const filtered = uniqueItems.filter(item => 
+        item.title.toLowerCase().includes(query)
+      ).slice(0, 6);
+
+      if (filtered.length === 0) {
+        resultBox.innerHTML = '<div class="no-result-tip">未找到结果</div>';
+      } else {
+        resultBox.innerHTML = filtered.map(item => `
+          <a class="search-result-item" href="${item.url}">
+            <div class="result-title">${item.title}</div>
+          </a>
+        `).join('');
+      }
+      resultBox.classList.remove('hidden');
+    });
+
+    // 点击空白处关闭弹窗，并恢复菜单
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target as Node) && !resultBox.contains(e.target as Node)) {
+        resultBox.classList.add('hidden');
+        toggleMenuItems(false); // 弹窗关闭，菜单完美浮现
+      }
+    });
+  }
+
+  initSearch();
+  document.addEventListener('astro:page-load', initSearch);
+</script>
